@@ -1,190 +1,299 @@
 // src/components/layouts/public-footer.tsx
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import {
-  ShieldCheck,
-  ArrowUpRight,
-  Sparkles,
-  Globe2,
-  Terminal,
-  Fingerprint,
-  Check,
-  Copy,
-} from "lucide-react";
+import { ShieldCheck, ArrowRight } from "lucide-react";
 
 export function PublicFooter() {
-  const [copied, setCopied] = useState(false);
-  const contractAddress = "0x7F2...VERIFY_ED_2026";
+  const [email, setEmail] = useState("");
+  const [subscribed, setSubscribed] = useState(false);
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText("VERIFYED_NETWORK_ID_0x7F2A");
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleSubscribe = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) return;
+    setSubscribed(true);
+    setTimeout(() => {
+      setEmail("");
+      setSubscribed(false);
+    }, 3000);
   };
 
   return (
-    <footer className="relative overflow-hidden bg-background text-foreground pt-24 pb-12 border-t border-border/50">
-      {/* Dynamic Ambient Blur Glows */}
-      <div className="pointer-events-none absolute bottom-0 left-1/2 -translate-x-1/2 w-[850px] h-[350px] bg-gradient-to-tr from-primary/20 via-indigo-500/15 to-emerald-400/15 blur-[160px] rounded-full -z-10" />
+    <footer className="bg-[#faf8f5] text-[#0e1738] pt-12 pb-16 px-6">
+      <div className="max-w-7xl mx-auto space-y-24">
+        {/* Upper Big Card: Ready to get started Banner */}
+        <div className="bg-[#122253] text-white rounded-[40px] sm:rounded-[48px] px-8 py-20 sm:py-24 text-center max-w-6xl mx-auto shadow-2xl relative overflow-hidden">
+          {/* Subtle Ambient Radial Highlight */}
+          <div className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-sky-500/10 blur-[120px] rounded-full" />
 
-      <div className="max-w-7xl mx-auto px-6">
-        {/* Upper Grid: Playful Bento Architecture */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pb-16 border-b border-border/40">
-          {/* Bento Card 1: Kinetic Brand Capsule */}
-          <div className="lg:col-span-6 flex flex-col justify-between p-8 sm:p-10 rounded-3xl bg-white/40 dark:bg-card/40 backdrop-blur-2xl border border-white/50 dark:border-white/10 shadow-xl shadow-black/5 relative group overflow-hidden">
-            <div className="absolute top-0 right-0 w-36 h-36 bg-gradient-to-br from-primary/10 to-transparent rounded-bl-full pointer-events-none" />
+          <div className="relative z-10 max-w-3xl mx-auto space-y-6">
+            <h2 className="text-4xl sm:text-6xl font-extrabold tracking-tight">
+              Ready to get started?
+            </h2>
 
-            <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-foreground text-background text-xs font-mono mb-6">
-                <Terminal className="w-3.5 h-3.5" />
-                <span>BUILD_EDITION // 2026</span>
-              </div>
+            <p className="text-sm sm:text-lg text-slate-300 font-normal leading-relaxed max-w-2xl mx-auto">
+              Terbitkan dan verifikasi sertifikat digital dengan standar
+              integritas tinggi. Dirancang untuk institusi pendidikan,
+              penyelenggara acara, dan pemeriksa berkas independen.
+            </p>
 
-              <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight leading-tight">
-                Membangun Standar Baru <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-indigo-500 to-emerald-500">
-                  Keabsahan Dokumen.
-                </span>
-              </h2>
-
-              <p className="text-sm sm:text-base text-muted-foreground mt-4 max-w-md leading-relaxed">
-                Eksplorasi antarmuka verifikasi yang memadukan kecepatan
-                komputasi instan dengan transparansi data desentral.
-              </p>
-            </div>
-
-            {/* Interactive Token Strip */}
-            <div className="mt-8 pt-6 border-t border-border/50 flex flex-wrap items-center justify-between gap-4">
-              <button
-                type="button"
-                onClick={handleCopy}
-                className="flex items-center gap-2 text-xs font-mono px-3 py-1.5 rounded-xl bg-background/80 hover:bg-background border border-border/60 transition-all cursor-pointer group/btn"
+            <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
+              <Link
+                href="/register"
+                className="px-8 py-3.5 rounded-full bg-white text-[#122253] text-sm font-bold hover:bg-slate-100 transition-all shadow-md active:scale-95"
               >
-                <Fingerprint className="w-3.5 h-3.5 text-primary" />
-                <span>NODE_REF: {contractAddress}</span>
-                {copied ? (
-                  <Check className="w-3.5 h-3.5 text-emerald-600" />
-                ) : (
-                  <Copy className="w-3.5 h-3.5 text-muted-foreground group-hover/btn:text-foreground" />
-                )}
-              </button>
-
-              <div className="flex items-center gap-2 text-xs font-mono text-emerald-600 dark:text-emerald-400">
-                <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span>ALL SYSTEMS OPERATIONAL</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Bento Card 2: Visual Eccentric Stickers & Micro Navigation */}
-          <div className="lg:col-span-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Sticker 1: Protocol Explorer */}
-            <div className="p-6 rounded-3xl bg-muted/30 border border-border/60 flex flex-col justify-between hover:border-foreground/30 transition-all group">
-              <div>
-                <div className="w-10 h-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                  <ShieldCheck className="w-5 h-5" />
-                </div>
-                <div className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-1">
-                  Architecture
-                </div>
-                <h3 className="text-lg font-bold">Verifikasi Instan</h3>
-                <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
-                  Pengecekan integritas langsung tanpa alur birokrasi berbelit.
-                </p>
-              </div>
-
+                Mulai Uji Coba Gratis
+              </Link>
               <Link
                 href="/verify"
-                className="mt-6 inline-flex items-center gap-1.5 text-xs font-semibold text-foreground group-hover:text-primary transition-colors"
+                className="px-8 py-3.5 rounded-full bg-transparent border border-white/60 text-white text-sm font-bold hover:bg-white/10 transition-all active:scale-95"
               >
-                <span>Buka Portal</span>
-                <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                Coba Verifikasi
               </Link>
-            </div>
-
-            {/* Sticker 2: Playful Interactive Badge */}
-            <div className="p-6 rounded-3xl bg-gradient-to-br from-indigo-500/10 via-background to-background border border-indigo-500/20 flex flex-col justify-between relative overflow-hidden group">
-              {/* Playful Tilted Tag */}
-              <div className="absolute top-4 right-4 rotate-6 group-hover:rotate-0 transition-transform">
-                <span className="text-[10px] font-mono font-bold uppercase tracking-wider bg-foreground text-background px-2.5 py-1 rounded-full shadow-md">
-                  V.1.0_BETA
-                </span>
-              </div>
-
-              <div>
-                <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                  <Sparkles className="w-5 h-5" />
-                </div>
-                <div className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-1">
-                  Ecosystem
-                </div>
-                <h3 className="text-lg font-bold">Akses Penyelenggara</h3>
-                <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
-                  Workspace untuk menerbitkan sertifikat terenkripsi.
-                </p>
-              </div>
-
-              <Link
-                href="/login"
-                className="mt-6 inline-flex items-center gap-1.5 text-xs font-semibold text-foreground group-hover:text-indigo-500 transition-colors"
-              >
-                <span>Masuk Dashboard</span>
-                <ArrowUpRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-              </Link>
-            </div>
-
-            {/* Sticker 3 (Spans 2 columns on mobile/tablet): Manifesto Capsule */}
-            <div className="sm:col-span-2 p-6 rounded-3xl bg-white/40 dark:bg-card/40 backdrop-blur-xl border border-white/60 dark:border-white/10 flex items-center justify-between flex-wrap gap-4">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0">
-                  <Globe2 className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="text-xs font-bold">
-                    Terbuka untuk Semua Dokumen
-                  </div>
-                  <div className="text-[11px] text-muted-foreground">
-                    Mendukung verifikasi lintas institusi & komunitas digital.
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span className="px-3 py-1 rounded-full bg-muted/60 text-[11px] font-mono text-muted-foreground">
-                  ID_RESOLVER
-                </span>
-                <span className="px-3 py-1 rounded-full bg-muted/60 text-[11px] font-mono text-muted-foreground">
-                  PDF_INTEGRITY
-                </span>
-              </div>
             </div>
           </div>
         </div>
 
-        {/* Middle Section: Oversized Kinetic Branding */}
-        <div className="py-12 select-none pointer-events-none">
-          <div className="text-center font-extrabold tracking-tighter text-[15vw] sm:text-[16vw] leading-none text-muted-foreground/10 dark:text-muted-foreground/5 uppercase font-mono">
-            VERIFYED
+        {/* Middle Row: Brand Logo & Newsletter Input */}
+        <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10 items-start pt-4">
+          {/* Left Brand */}
+          <div className="lg:col-span-5 flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-[#122253] text-white flex items-center justify-center shadow-sm">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <span className="font-extrabold text-2xl tracking-tight text-[#122253]">
+              Verify<span className="text-[#3b5998]">Ed</span>
+            </span>
+          </div>
+
+          {/* Right Newsletter */}
+          <div className="lg:col-span-7 space-y-3">
+            <h4 className="text-base sm:text-lg font-bold text-[#122253]">
+              Get informed of new and updated features
+            </h4>
+
+            <form onSubmit={handleSubscribe} className="relative max-w-xl">
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Your email address"
+                required
+                className="w-full bg-[#eee9df]/70 border border-transparent focus:border-[#122253]/30 rounded-2xl px-5 py-3.5 text-sm text-[#122253] placeholder:text-slate-500/80 focus:outline-none focus:bg-[#eee9df] transition-all pr-32 font-medium"
+              />
+              <button
+                type="submit"
+                className="absolute right-2 top-2 bottom-2 px-5 rounded-xl bg-transparent text-xs font-bold text-[#122253] hover:opacity-75 transition-opacity flex items-center gap-1.5"
+              >
+                <span>{subscribed ? "Subscribed!" : "Subscribe"}</span>
+                {!subscribed && <ArrowRight className="w-3.5 h-3.5" />}
+              </button>
+            </form>
+
+            <p className="text-xs text-slate-500 font-medium">
+              No spam, just occasional product updates.
+            </p>
           </div>
         </div>
 
-        {/* Lower Row: Minimalist Legal & Status Details */}
-        <div className="pt-6 border-t border-border/40 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs font-mono text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary" />
-            <span>PROJECT VERIFYED // HACKATHON PROTOCOL 2026</span>
+        {/* Link Columns Grid */}
+        <div className="max-w-6xl mx-auto grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-8 pt-8">
+          {/* Col 1 */}
+          <div className="space-y-4 text-xs font-medium">
+            <div className="font-bold text-[#122253] text-[13px]">
+              Get started
+            </div>
+            <ul className="space-y-2.5 text-slate-600">
+              <li>
+                <Link
+                  href="/"
+                  className="hover:text-[#122253] transition-colors"
+                >
+                  Homepage
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="#pricing"
+                  className="hover:text-[#122253] transition-colors"
+                >
+                  Pricing
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/register"
+                  className="hover:text-[#122253] transition-colors"
+                >
+                  Free Sandbox
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="#about"
+                  className="hover:text-[#122253] transition-colors"
+                >
+                  Features
+                </Link>
+              </li>
+            </ul>
           </div>
 
-          <div className="flex items-center gap-6">
-            <span className="hover:text-foreground cursor-pointer transition-colors">
-              SANDBOX_ENVIRONMENT
+          {/* Col 2 */}
+          <div className="space-y-4 text-xs font-medium">
+            <div className="font-bold text-[#122253] text-[13px]">Platform</div>
+            <ul className="space-y-2.5 text-slate-600">
+              <li>
+                <Link
+                  href="/verify"
+                  className="hover:text-[#122253] transition-colors"
+                >
+                  Portal Verifikasi
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="#features"
+                  className="hover:text-[#122253] transition-colors"
+                >
+                  Automations
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="#features"
+                  className="hover:text-[#122253] transition-colors"
+                >
+                  Batch Issuance
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/api/docs"
+                  className="hover:text-[#122253] transition-colors"
+                >
+                  REST API
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Col 3 */}
+          <div className="space-y-4 text-xs font-medium">
+            <div className="font-bold text-[#122253] text-[13px]">
+              Solutions
+            </div>
+            <ul className="space-y-2.5 text-slate-600">
+              <li>
+                <span className="hover:text-[#122253] cursor-pointer transition-colors">
+                  For Universities
+                </span>
+              </li>
+              <li>
+                <span className="hover:text-[#122253] cursor-pointer transition-colors">
+                  For Bootcamps
+                </span>
+              </li>
+              <li>
+                <span className="hover:text-[#122253] cursor-pointer transition-colors">
+                  For Organizers
+                </span>
+              </li>
+              <li>
+                <span className="hover:text-[#122253] cursor-pointer transition-colors">
+                  For Verifiers
+                </span>
+              </li>
+            </ul>
+          </div>
+
+          {/* Col 4 */}
+          <div className="space-y-4 text-xs font-medium">
+            <div className="font-bold text-[#122253] text-[13px]">
+              Developers
+            </div>
+            <ul className="space-y-2.5 text-slate-600">
+              <li>
+                <Link
+                  href="/api/docs"
+                  className="hover:text-[#122253] transition-colors"
+                >
+                  API Reference
+                </Link>
+              </li>
+              <li>
+                <span className="hover:text-[#122253] cursor-pointer transition-colors">
+                  SDK Client
+                </span>
+              </li>
+              <li>
+                <span className="hover:text-[#122253] cursor-pointer transition-colors">
+                  Webhooks
+                </span>
+              </li>
+            </ul>
+          </div>
+
+          {/* Col 5 */}
+          <div className="space-y-4 text-xs font-medium">
+            <div className="font-bold text-[#122253] text-[13px]">
+              Resources
+            </div>
+            <ul className="space-y-2.5 text-slate-600">
+              <li>
+                <span className="hover:text-[#122253] cursor-pointer transition-colors">
+                  Documentation
+                </span>
+              </li>
+              <li>
+                <span className="hover:text-[#122253] cursor-pointer transition-colors">
+                  Integrations
+                </span>
+              </li>
+              <li>
+                <span className="hover:text-[#122253] cursor-pointer transition-colors">
+                  Security Model
+                </span>
+              </li>
+              <li>
+                <span className="hover:text-[#122253] cursor-pointer transition-colors">
+                  System Status
+                </span>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        {/* Bottom Micro Bar: Protocol Tag & Legal Badges */}
+        <div className="max-w-6xl mx-auto pt-10 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-6 text-[12px] font-medium text-slate-500">
+          <div className="flex flex-wrap items-center gap-6">
+            <span className="px-3 py-1 rounded bg-[#146375] text-white font-extrabold text-[11px] tracking-wider uppercase">
+              VERIFYED
             </span>
-            <span className="hover:text-foreground cursor-pointer transition-colors">
-              IMMUTABLE_CORE
+
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              <span className="text-[#122253] font-semibold">
+                Service status: Operational
+              </span>
+            </div>
+
+            <span className="hover:text-[#122253] cursor-pointer transition-colors">
+              Terms of Use
             </span>
-            <span>NO TRACKERS</span>
+            <span className="hover:text-[#122253] cursor-pointer transition-colors">
+              Privacy Policy
+            </span>
+            <span className="hover:text-[#122253] cursor-pointer transition-colors">
+              Security Protocol
+            </span>
+          </div>
+
+          <div className="flex items-center gap-4 text-[#122253] font-semibold">
+            <span className="hover:opacity-75 cursor-pointer transition-opacity">
+              © 2026 VerifyEd Protocol
+            </span>
           </div>
         </div>
       </div>

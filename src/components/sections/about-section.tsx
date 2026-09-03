@@ -64,10 +64,6 @@ export function AboutSection() {
       <div className="max-w-6xl mx-auto space-y-36">
         {/* Section Header */}
         <div className="text-center max-w-2xl mx-auto space-y-4">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full border border-border/80 bg-muted/40 backdrop-blur-md text-xs font-mono text-muted-foreground">
-            <Sparkles className="w-3.5 h-3.5 text-primary" />
-            <span>ALUR INTEGRITAS VERIFYED</span>
-          </div>
           <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight leading-tight">
             Standar Baru Validasi <br />
             <span className="text-primary">Dokumen Digital</span>

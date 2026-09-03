@@ -15,7 +15,6 @@ export default function GuestLandingPage() {
       {/* Testimonials Grid & Bento */}
       <TestimonialsSection />
 
-      <OverlappingSteps />
       <PublicFooter />
     </main>
   );
