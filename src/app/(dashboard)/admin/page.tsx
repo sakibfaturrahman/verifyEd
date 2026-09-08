@@ -5,9 +5,9 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { AdminSidebar } from "@/components/layouts/admin/admin-sidebar";
 import { AdminTopNav } from "@/components/layouts/admin/admin-topnav";
-import { AdminWelcomeHeader } from "@/features/dashboard/components/admin-welcome-header";
-import { AdminNotificationsBox } from "@/features/dashboard/components/admin-notifications-box";
-import { AdminAssignmentsBox } from "@/features/dashboard/components/admin-assignments-box";
+import { AdminWelcomeHeader } from "@/features/dashboard/components/admin/admin-welcome-header";
+import { AdminNotificationsBox } from "@/features/dashboard/components/admin/admin-notifications-box";
+import { AdminAssignmentsBox } from "@/features/dashboard/components/admin/admin-assignments-box";
 import {
   Award,
   FileCheck2,
