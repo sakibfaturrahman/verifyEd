@@ -1,4 +1,3 @@
-// src/components/layouts/admin/admin-sidebar.tsx
 "use client";
 
 import React, { useState } from "react";
@@ -10,8 +9,8 @@ import {
   Award,
   CalendarDays,
   ShieldCheck,
-  FileCheck2,
-  Users2,
+  Building2,
+  BarChart3,
   History,
   Settings,
   X,
@@ -28,67 +27,60 @@ const menuGroups = [
       {
         id: "dashboard",
         icon: LayoutGrid,
-        label: "Ringkasan",
+        label: "Dashboard",
         href: "/admin",
+        badge: null,
+      },
+      {
+        id: "statistics",
+        icon: BarChart3,
+        label: "Statistik & Laporan",
+        href: "/admin/statistics",
         badge: null,
       },
       {
         id: "alerts",
         icon: Bell,
-        label: "Notifikasi",
+        label: "Notifikasi Sistem",
         href: "/admin/notifikasi",
         badge: "3",
       },
     ],
   },
   {
-    title: "Repositori",
+    title: "Manajemen Utama",
     items: [
       {
-        id: "certificates",
-        icon: Award,
-        label: "Antrean Sertifikat",
-        href: "/admin/certificates",
+        id: "organizations",
+        icon: Building2,
+        label: "Organisasi & User",
+        href: "/admin/users",
         badge: null,
       },
       {
         id: "events",
         icon: CalendarDays,
-        label: "Agenda & Instansi",
+        label: "Agenda & Event",
         href: "/admin/events",
         badge: null,
       },
       {
-        id: "verifications",
-        icon: FileCheck2,
-        label: "Validasi Berkas",
-        href: "/admin/verifikasi",
-        badge: null,
-      },
-      {
-        id: "logs",
-        icon: History,
-        label: "Riwayat Audit",
-        href: "/admin/logs",
+        id: "certificates",
+        icon: Award,
+        label: "Daftar Sertifikat",
+        href: "/admin/certificates",
         badge: null,
       },
     ],
   },
   {
-    title: "Kendali",
+    title: "Audit & Sistem",
     items: [
       {
-        id: "users",
-        icon: Users2,
-        label: "Kelola Akun",
-        href: "/admin/users",
-        badge: null,
-      },
-      {
-        id: "security",
-        icon: ShieldCheck,
-        label: "Kunci Token",
-        href: "/admin/keamanan",
+        id: "logs",
+        icon: History,
+        label: "Log Verifikasi",
+        href: "/admin/logs",
         badge: null,
       },
       {
@@ -173,7 +165,6 @@ export function AdminSidebar({
       <div className="flex-1 overflow-y-auto px-3 2xl:px-4 py-4 2xl:py-6 space-y-5 2xl:space-y-7 no-scrollbar">
         {menuGroups.map((group, idx) => (
           <div key={idx} className="space-y-1 2xl:space-y-1.5">
-            {/* Group Label */}
             {!isCollapsed ? (
               <p className="text-[11px] 2xl:text-xs font-semibold text-slate-400 dark:text-zinc-500 px-3 2xl:px-4 py-1 tracking-normal">
                 {group.title}
@@ -210,7 +201,6 @@ export function AdminSidebar({
                       }`}
                     />
 
-                    {/* Label & Badge saat Expanded */}
                     {!isCollapsed && (
                       <div className="flex items-center justify-between flex-1 truncate">
                         <span className="truncate">{item.label}</span>
@@ -228,7 +218,6 @@ export function AdminSidebar({
                       </div>
                     )}
 
-                    {/* Tooltip Hover saat Collapsed */}
                     {isCollapsed && (
                       <div className="absolute left-full ml-3.5 px-2.5 2xl:px-3 py-1.5 rounded-lg bg-[#0e1738] text-white text-xs 2xl:text-sm font-medium whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity shadow-lg z-50">
                         {item.label}
@@ -270,12 +259,10 @@ export function AdminSidebar({
 
   return (
     <>
-      {/* Sidebar Desktop */}
       <div className="hidden md:block sticky top-0 h-screen shrink-0 z-40">
         <SidebarBody />
       </div>
 
-      {/* Drawer Mobile */}
       <AnimatePresence>
         {isOpen && (
           <div className="fixed inset-0 z-50 md:hidden flex">

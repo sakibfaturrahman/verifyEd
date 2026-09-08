@@ -69,7 +69,7 @@ export function AdminWelcomeHeader({
           <div className="hidden lg:flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-50 dark:bg-zinc-800/60 border border-slate-200/80 dark:border-zinc-700/60 text-xs font-medium text-slate-600 dark:text-zinc-300">
             <Calendar className="w-3.5 h-3.5 text-slate-400" />
             <span className="capitalize">
-              {currentDate || "Memuat tanggal..."}
+              {currentDate || "Memuat Tanggal..."}
             </span>
           </div>
 
