@@ -50,7 +50,7 @@ const userMenuGroups = [
         id: "upload",
         icon: UploadCloud,
         label: "Terbitkan Sertifikat",
-        href: "/dashboard/certificates/upload",
+        href: "/user/certificates/upload",
       },
     ],
   },
