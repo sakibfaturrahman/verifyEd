@@ -1,19 +1,25 @@
-// src/app/(dashboard)/admin/certificates/page.tsx
+// src/app/(dashboard)/dashboard/certificates/page.tsx
 "use client";
 
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
-import { AdminSidebar } from "@/components/layouts/admin/admin-sidebar";
+import { UserSidebar } from "@/components/layouts/user/user-sidebar";
 import { AdminTopNav } from "@/components/layouts/admin/admin-topnav";
-import { CertTableToolbar } from "@/features/certificates/components/admin/cert-table-toolbar";
-import { CertDetailModal } from "@/features/certificates/components/admin/cert-detail-modal";
+import { UserCertToolbar } from "@/features/certificates/components/user/user-cert-toolbar";
+import { UserCertDetailModal } from "@/features/certificates/components/user/user-cert-detail-modal";
 import { CertRevokeModal } from "@/features/certificates/components/admin/cert-revoke-modal";
 import { CertificateItem } from "@/features/certificates/types/cert.types";
-import { CheckCircle2, XCircle, Eye, Download } from "lucide-react";
+import {
+  CheckCircle2,
+  XCircle,
+  Eye,
+  Download,
+  ShieldAlert,
+} from "lucide-react";
 
-const initialMockCertificates: CertificateItem[] = [
+const initialUserCertificates: CertificateItem[] = [
   {
-    id: "cert-001",
+    id: "cert-u01",
     certificateNumber: "CERT-20260901-A1B2C3D4",
     recipientName: "Aditya Pratama",
     eventName: "National Tech Hackathon 2026",
@@ -26,37 +32,37 @@ const initialMockCertificates: CertificateItem[] = [
     verificationCount: 24,
   },
   {
-    id: "cert-002",
-    certificateNumber: "CERT-20260902-E5F6G7H8",
-    recipientName: "Siti Nurhaliza",
-    eventName: "AI & Cloud Summit 2026",
-    organizer: "GDG Cloud Tasikmalaya",
+    id: "cert-u02",
+    certificateNumber: "CERT-20260901-X9Y8Z7W6",
+    recipientName: "Rani Widyaningsih",
+    eventName: "National Tech Hackathon 2026",
+    organizer: "Universitas Perjuangan",
     fileHash:
-      "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
-    qrToken: "tok_123456789abcdef0123456789abcdef0",
+      "8f434346648f6b96df89dda901c5176b10a6d83961dd3c1ac88b59b2dc327aa4",
+    qrToken: "tok_aabbccddeeff00112233445566778899",
     status: "active",
-    issuedAt: "2026-09-02",
-    verificationCount: 8,
+    issuedAt: "2026-09-01",
+    verificationCount: 12,
   },
   {
-    id: "cert-003",
-    certificateNumber: "CERT-20260828-I9J0K1L2",
-    recipientName: "Bambang Pamungkas",
-    eventName: "Web Development Bootcamp",
-    organizer: "Tech Academy",
+    id: "cert-u03",
+    certificateNumber: "CERT-20260815-M3N4O5P6",
+    recipientName: "Farhan Ardiansyah",
+    eventName: "Workshop UI/UX & Design System",
+    organizer: "Universitas Perjuangan",
     fileHash:
-      "4b227777d4dd1fc61c6f884f48641d02b4d121d3fd328cb08b5531fcacdabf8a",
-    qrToken: "tok_abcdef0123456789abcdef0123456789",
+      "ef2d127de37b942baad06145e54b0c619a1f22327b2ebbcfbec78f5564afe39d",
+    qrToken: "tok_99887766554433221100aabbccddeeff",
     status: "revoked",
-    issuedAt: "2026-08-28",
-    verificationCount: 14,
+    issuedAt: "2026-08-15",
+    verificationCount: 5,
   },
 ];
 
-export default function AdminCertificatesPage() {
+export default function UserCertificatesPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [certs, setCerts] = useState<CertificateItem[]>(
-    initialMockCertificates,
+    initialUserCertificates,
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<
@@ -64,7 +70,7 @@ export default function AdminCertificatesPage() {
   >("all");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
-  // State Dialog
+  // Modal State
   const [activeDetailCert, setActiveDetailCert] =
     useState<CertificateItem | null>(null);
   const [revokeModalOpen, setRevokeModalOpen] = useState(false);
@@ -102,14 +108,12 @@ export default function AdminCertificatesPage() {
   // Toast Actions
   const handleDownloadSingle = (certNumber: string) => {
     toast.success("Mempersiapkan Berkas", {
-      description: `File sertifikat ${certNumber}.pdf berhasil diunduh.`,
+      description: `Dokumen ${certNumber}.pdf berhasil diunduh ke perangkat Anda.`,
     });
   };
 
   const handleBulkDownload = () => {
-    toast.loading("Membuat Arsip Dokumen...", {
-      duration: 1500,
-    });
+    toast.loading("Mengompresi Dokumen...", { duration: 1500 });
     setTimeout(() => {
       toast.success("Unduhan Selesai", {
         description: `Arsip ZIP untuk ${selectedIds.length} sertifikat berhasil diunduh.`,
@@ -125,15 +129,22 @@ export default function AdminCertificatesPage() {
       ),
     );
     setRevokeModalOpen(false);
-    toast.error("Status Kredensial Dicabut", {
-      description: `${selectedIds.length} sertifikat telah dinonaktifkan dengan alasan: "${reason}".`,
+    toast.error("Sertifikat Telah Dicabut", {
+      description: `${selectedIds.length} sertifikat telah dibatalkan dengan alasan: "${reason}".`,
     });
     setSelectedIds([]);
   };
 
+  const handleRegenerate = (cert: CertificateItem) => {
+    toast.info("Regenerasi Stempel", {
+      description: `Stempel QR untuk dokumen ${cert.certificateNumber} berhasil dikonfigurasi ulang.`,
+    });
+    setActiveDetailCert(null);
+  };
+
   return (
     <div className="flex min-h-screen bg-[#faf8f5] dark:bg-zinc-950 font-sans antialiased">
-      <AdminSidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
+      <UserSidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
 
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
         <AdminTopNav onOpenSidebar={() => setIsSidebarOpen(true)} />
@@ -142,16 +153,16 @@ export default function AdminCertificatesPage() {
           {/* Header Banner */}
           <div className="bg-white dark:bg-zinc-900 border border-slate-200/90 dark:border-zinc-800 rounded-2xl p-5 shadow-xs">
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[#0e1738] dark:text-zinc-50">
-              Daftar Seluruh Sertifikat
+              Portofolio Sertifikat Diterbitkan
             </h1>
             <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5 font-medium">
-              Kelola dokumen terdaftar, kontrol status integritas hash biner,
-              dan pencabutan massal.
+              Kelola dokumen yang telah dibubuhi stempel QR token dan pantau
+              status validitas di portal publik.
             </p>
           </div>
 
           {/* Modular Toolbar */}
-          <CertTableToolbar
+          <UserCertToolbar
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
             statusFilter={statusFilter}
@@ -178,12 +189,12 @@ export default function AdminCertificatesPage() {
                         className="rounded border-slate-300 text-[#0e1738] focus:ring-[#0e1738]/20"
                       />
                     </th>
-                    <th className="py-3.5 px-4">Nomor & Token Dokumen</th>
-                    <th className="py-3.5 px-4">Penerima</th>
-                    <th className="py-3.5 px-4">Agenda & Penyelenggara</th>
-                    <th className="py-3.5 px-4">Integritas Hash</th>
+                    <th className="py-3.5 px-4">Nomor Kredensial</th>
+                    <th className="py-3.5 px-4">Nama Penerima</th>
+                    <th className="py-3.5 px-4">Agenda Terkait</th>
+                    <th className="py-3.5 px-4">Tanggal Diterbitkan</th>
                     <th className="py-3.5 px-4">Status</th>
-                    <th className="py-3.5 px-4 text-center">Audit Scan</th>
+                    <th className="py-3.5 px-4 text-center">Verifikasi Scan</th>
                     <th className="py-3.5 px-4 text-right">Aksi</th>
                   </tr>
                 </thead>
@@ -194,7 +205,8 @@ export default function AdminCertificatesPage() {
                         colSpan={8}
                         className="py-12 text-center text-slate-400 font-medium"
                       >
-                        Tidak ada sertifikat yang cocok dengan pencarian.
+                        Belum ada sertifikat yang cocok dengan kriteria
+                        pencarian.
                       </td>
                     </tr>
                   ) : (
@@ -221,29 +233,18 @@ export default function AdminCertificatesPage() {
                             <div className="font-bold text-[#0e1738] dark:text-zinc-100">
                               {cert.certificateNumber}
                             </div>
-                            <div className="text-[10px] text-slate-400 truncate max-w-[140px]">
+                            <div className="text-[10px] text-slate-400 truncate max-w-[130px]">
                               {cert.qrToken}
                             </div>
                           </td>
                           <td className="py-3.5 px-4 font-semibold text-slate-800 dark:text-zinc-200">
                             {cert.recipientName}
                           </td>
-                          <td className="py-3.5 px-4">
-                            <div className="font-medium text-slate-800 dark:text-zinc-200">
-                              {cert.eventName}
-                            </div>
-                            <div className="text-[11px] text-slate-400">
-                              {cert.organizer}
-                            </div>
+                          <td className="py-3.5 px-4 text-slate-700 dark:text-zinc-300">
+                            {cert.eventName}
                           </td>
-                          <td className="py-3.5 px-4 font-mono text-[11px] text-slate-500 dark:text-zinc-400">
-                            <span
-                              className="truncate inline-block max-w-[100px]"
-                              title={cert.fileHash}
-                            >
-                              {cert.fileHash.slice(0, 8)}...
-                              {cert.fileHash.slice(-6)}
-                            </span>
+                          <td className="py-3.5 px-4 font-mono text-slate-500">
+                            {cert.issuedAt}
                           </td>
                           <td className="py-3.5 px-4">
                             {cert.status === "active" ? (
@@ -258,7 +259,7 @@ export default function AdminCertificatesPage() {
                               </span>
                             )}
                           </td>
-                          <td className="py-3.5 px-4 text-center font-bold text-slate-700 dark:text-zinc-300">
+                          <td className="py-3.5 px-4 text-center font-bold text-slate-700 dark:text-zinc-300 font-mono">
                             {cert.verificationCount} kali
                           </td>
                           <td className="py-3.5 px-4 text-right">
@@ -267,7 +268,7 @@ export default function AdminCertificatesPage() {
                                 type="button"
                                 onClick={() => setActiveDetailCert(cert)}
                                 className="p-1.5 rounded-lg text-slate-500 hover:text-[#0e1738] dark:hover:text-white hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors"
-                                title="Lihat Detail"
+                                title="Lihat Rincian"
                               >
                                 <Eye className="w-4 h-4" />
                               </button>
@@ -294,10 +295,12 @@ export default function AdminCertificatesPage() {
         </main>
       </div>
 
-      {/* Modal Components */}
-      <CertDetailModal
+      {/* Modals */}
+      <UserCertDetailModal
         cert={activeDetailCert}
         onClose={() => setActiveDetailCert(null)}
+        onDownload={handleDownloadSingle}
+        onRegenerate={handleRegenerate}
       />
       <CertRevokeModal
         isOpen={revokeModalOpen}

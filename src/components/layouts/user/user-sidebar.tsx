@@ -44,7 +44,7 @@ const userMenuGroups = [
         id: "certificates",
         icon: Award,
         label: "Daftar Sertifikat",
-        href: "/dashboard/certificates",
+        href: "/user/certificates",
       },
       {
         id: "upload",
@@ -61,7 +61,7 @@ const userMenuGroups = [
         id: "profile",
         icon: Building2,
         label: "Profil Organisasi",
-        href: "/dashboard/profile",
+        href: "/user/profile",
       },
       {
         id: "settings",
