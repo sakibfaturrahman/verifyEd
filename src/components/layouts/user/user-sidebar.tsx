@@ -1,4 +1,3 @@
-// src/components/layouts/user/user-sidebar.tsx
 "use client";
 
 import React, { useState } from "react";
@@ -27,7 +26,7 @@ const userMenuGroups = [
         id: "dashboard",
         icon: LayoutGrid,
         label: "Dashboard",
-        href: "/dashboard",
+        href: "/user",
       },
     ],
   },
@@ -38,7 +37,7 @@ const userMenuGroups = [
         id: "events",
         icon: CalendarDays,
         label: "Agenda Acara",
-        href: "/dashboard/events",
+        href: "/user/events",
       },
       {
         id: "certificates",
@@ -67,7 +66,7 @@ const userMenuGroups = [
         id: "settings",
         icon: Settings,
         label: "Pengaturan Akun",
-        href: "/dashboard/settings",
+        href: "/user/settings",
       },
     ],
   },
