@@ -2,14 +2,17 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Eye, EyeOff, ArrowRight, Mail, Lock, Loader2 } from "lucide-react";
 import { useLoginMutation } from "@/features/auth/hooks/use-auth-mutations";
 import { useAuthStore } from "@/stores/auth-store";
 
-export function LoginForm() {
+interface LoginFormProps {
+  onSwitchToRegister?: () => void;
+}
+
+export function LoginForm({ onSwitchToRegister }: LoginFormProps) {
   const router = useRouter();
   const setAuth = useAuthStore((state) => state.setAuth);
 
@@ -31,26 +34,26 @@ export function LoginForm() {
             const { accessToken, refreshToken, expiresAt, profile } =
               response.data;
 
-            setAuth({
-              accessToken,
-              refreshToken,
-              expiresAt,
-              user: profile,
-            });
+            // Simpan sesi ke Zustand (persist ke localStorage)
+            setAuth({ accessToken, refreshToken, expiresAt, user: profile });
 
             toast.success("Autentikasi Berhasil", {
               description: `Selamat datang kembali, ${profile.name}!`,
             });
 
-            router.push("/dashboard");
+            // Role-based redirection
+            if (profile.role === "admin") {
+              router.push("/admin");
+            } else {
+              router.push("/user");
+            }
           }
         },
         onError: (err) => {
-          const errMsg =
-            err.response?.data?.message ||
-            "Kombinasi email atau kata sandi tidak valid.";
           toast.error("Gagal Masuk", {
-            description: errMsg,
+            description:
+              err.response?.data?.message ||
+              "Kombinasi email atau kata sandi tidak cocok.",
           });
         },
       },
@@ -58,50 +61,40 @@ export function LoginForm() {
   };
 
   return (
-    <div className="space-y-7">
-      {/* Header Form */}
-      <div className="space-y-2">
-        <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-[#0e1738] dark:text-zinc-50">
-          Selamat Datang Kembali
-        </h1>
-        <p className="text-sm text-slate-500 dark:text-zinc-400 font-medium leading-relaxed">
-          Masuk ke workspace Anda untuk mengelola acara, menerbitkan berkas, dan
-          memantau log verifikasi.
+    <div className="space-y-6">
+      <div className="space-y-1.5">
+        <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#122253]">
+          Masuk Akun
+        </h2>
+        <p className="text-xs text-slate-500 font-normal leading-relaxed">
+          Masukkan kredensial terdaftar untuk mengelola penerbitan sertifikat.
         </p>
       </div>
 
-      {/* Form Fields */}
-      <form onSubmit={handleLogin} className="space-y-4">
-        {/* Email Address */}
-        <div className="space-y-1.5">
-          <label className="text-xs font-bold text-[#0e1738] dark:text-zinc-200">
-            Alamat Email
-          </label>
+      <form onSubmit={handleLogin} className="space-y-3.5 text-xs">
+        {/* Email */}
+        <div className="space-y-1">
+          <label className="font-bold text-[#122253]">Alamat Surel Resmi</label>
           <div className="relative">
             <input
               type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="nama@domain.com"
-              className="w-full bg-white dark:bg-zinc-900 border border-slate-200/90 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm font-medium text-[#0e1738] dark:text-zinc-50 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0e1738]/15 focus:border-[#0e1738] transition-all pr-10"
+              placeholder="nama@lembaga.ac.id"
+              className="w-full bg-[#eee9df]/50 border border-transparent focus:border-[#122253]/30 rounded-xl px-3.5 py-2.5 text-xs text-[#122253] placeholder:text-slate-400 focus:outline-none focus:bg-[#eee9df]/80 transition-all pr-9 font-medium"
             />
-            <Mail className="w-4 h-4 text-slate-400 absolute right-3.5 top-3.5" />
+            <Mail className="w-4 h-4 text-slate-400 absolute right-3 top-2.5" />
           </div>
         </div>
 
         {/* Password */}
-        <div className="space-y-1.5">
+        <div className="space-y-1">
           <div className="flex items-center justify-between">
-            <label className="text-xs font-bold text-[#0e1738] dark:text-zinc-200">
-              Kata Sandi
-            </label>
-            <Link
-              href="/forgot-password"
-              className="text-xs font-semibold text-slate-500 dark:text-zinc-400 hover:text-[#0e1738] dark:hover:text-zinc-200 transition-colors"
-            >
+            <label className="font-bold text-[#122253]">Kata Sandi</label>
+            <span className="text-[11px] font-semibold text-slate-400 hover:text-[#122253] cursor-pointer">
               Lupa sandi?
-            </Link>
+            </span>
           </div>
           <div className="relative">
             <input
@@ -110,12 +103,12 @@ export function LoginForm() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Masukkan kata sandi..."
-              className="w-full bg-white dark:bg-zinc-900 border border-slate-200/90 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm font-medium text-[#0e1738] dark:text-zinc-50 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0e1738]/15 focus:border-[#0e1738] transition-all pr-10"
+              className="w-full bg-[#eee9df]/50 border border-transparent focus:border-[#122253]/30 rounded-xl px-3.5 py-2.5 text-xs text-[#122253] placeholder:text-slate-400 focus:outline-none focus:bg-[#eee9df]/80 transition-all pr-9 font-medium"
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3.5 top-3.5 text-slate-400 hover:text-[#0e1738] dark:hover:text-zinc-200 transition-colors cursor-pointer"
+              className="absolute right-3 top-2.5 text-slate-400 hover:text-[#122253] transition-colors cursor-pointer"
             >
               {showPassword ? (
                 <EyeOff className="w-4 h-4" />
@@ -126,20 +119,20 @@ export function LoginForm() {
           </div>
         </div>
 
-        {/* Remember Me Checkbox */}
-        <div className="flex items-center gap-2 pt-1">
+        {/* Remember me */}
+        <div className="flex items-center gap-2 pt-0.5">
           <input
             type="checkbox"
-            id="remember"
+            id="login-remember"
             checked={rememberMe}
             onChange={(e) => setRememberMe(e.target.checked)}
-            className="h-4 w-4 rounded border-slate-300 text-[#0e1738] focus:ring-[#0e1738]/20 cursor-pointer"
+            className="h-3.5 w-3.5 rounded border-slate-300 text-[#122253] focus:ring-[#122253]/20 cursor-pointer"
           />
           <label
-            htmlFor="remember"
-            className="text-xs text-slate-600 dark:text-zinc-400 font-medium select-none cursor-pointer"
+            htmlFor="login-remember"
+            className="text-[11px] text-slate-500 font-medium select-none cursor-pointer"
           >
-            Ingat sesi saya di perangkat ini
+            Ingat sesi login di perangkat ini
           </label>
         </div>
 
@@ -147,31 +140,32 @@ export function LoginForm() {
         <button
           type="submit"
           disabled={loginMutation.isPending}
-          className="w-full mt-2 inline-flex items-center justify-center gap-2 py-3.5 px-5 rounded-xl bg-[#0e1738] dark:bg-zinc-100 text-white dark:text-[#0e1738] text-sm font-bold hover:bg-[#1a254d] transition-all shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+          className="w-full mt-2 py-3 rounded-xl bg-[#122253] text-white text-xs font-bold hover:bg-[#0e1738] transition-all shadow-sm active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 cursor-pointer"
         >
           {loginMutation.isPending ? (
             <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              <span>Memverifikasi Akses...</span>
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              <span>Memverifikasi...</span>
             </>
           ) : (
             <>
-              <span>Masuk ke Dashboard</span>
-              <ArrowRight className="w-4 h-4" />
+              <span>Masuk ke Workspace</span>
+              <ArrowRight className="w-3.5 h-3.5" />
             </>
           )}
         </button>
       </form>
 
-      {/* Footer Switcher */}
-      <div className="text-center pt-2 text-xs font-medium text-slate-500 dark:text-zinc-400">
-        Belum memiliki akun penerbit?{" "}
-        <Link
-          href="/register"
-          className="font-bold text-[#0e1738] dark:text-zinc-200 hover:underline"
+      {/* Mobile Switcher */}
+      <div className="lg:hidden text-center pt-2 text-xs text-slate-500">
+        Belum memiliki akun?{" "}
+        <button
+          type="button"
+          onClick={onSwitchToRegister}
+          className="font-bold text-[#122253] underline cursor-pointer"
         >
-          Daftar sekarang
-        </Link>
+          Daftar akun baru
+        </button>
       </div>
     </div>
   );

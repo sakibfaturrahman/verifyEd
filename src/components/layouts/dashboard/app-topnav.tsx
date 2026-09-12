@@ -1,4 +1,4 @@
-// src/components/layouts/admin-topnav.tsx
+// src/components/layouts/dashboard/app-topnav.tsx
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -13,7 +13,7 @@ import {
   ShieldAlert,
   ExternalLink,
   ChevronDown,
-  User,
+  User as UserIcon,
   Settings,
   LogOut,
   Clock,
@@ -21,18 +21,15 @@ import {
   Moon,
   CheckCircle2,
 } from "lucide-react";
+import { useAuthStore } from "@/stores/auth-store";
 
-interface AdminTopNavProps {
+interface AppTopNavProps {
   onOpenSidebar?: () => void;
-  user?: {
-    name?: string;
-    email?: string;
-    avatarUrl?: string;
-    role?: string;
-  };
+  roleOverride?: "admin" | "user";
 }
 
-export function AdminTopNav({ onOpenSidebar, user }: AdminTopNavProps) {
+export function AppTopNav({ onOpenSidebar, roleOverride }: AppTopNavProps) {
+  const { user, clearAuth } = useAuthStore();
   const [createOpen, setCreateOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -42,7 +39,17 @@ export function AdminTopNav({ onOpenSidebar, user }: AdminTopNavProps) {
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
 
-  // Inisialisasi status Dark Mode dari DOM / LocalStorage
+  // Tentukan role aktif (prioritas: prop roleOverride -> Zustand -> default user)
+  const currentRole =
+    roleOverride || (user?.role === "admin" ? "admin" : "user");
+  const isAdmin = currentRole === "admin";
+
+  // Data pengguna aktif
+  const userName = user?.name || (isAdmin ? "Administrator" : "Penyelenggara");
+  const userEmail = user?.email || "akun@verifyed.id";
+  const roleLabel = isAdmin ? "Super Admin" : "Organisasi";
+
+  // Inisialisasi status Dark Mode
   useEffect(() => {
     const isDarkMode =
       localStorage.getItem("theme") === "dark" ||
@@ -57,7 +64,6 @@ export function AdminTopNav({ onOpenSidebar, user }: AdminTopNavProps) {
     }
   }, []);
 
-  // Toggle Mode Gelap / Terang
   const toggleTheme = () => {
     if (isDark) {
       document.documentElement.classList.remove("dark");
@@ -70,7 +76,7 @@ export function AdminTopNav({ onOpenSidebar, user }: AdminTopNavProps) {
     }
   };
 
-  // Tutup dropdown saat pengguna klik di luar area
+  // Tutup dropdown jika klik di luar
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as Node;
@@ -89,7 +95,6 @@ export function AdminTopNav({ onOpenSidebar, user }: AdminTopNavProps) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Format Tanggal Redaksi Sistem
   const today = new Date().toLocaleDateString("id-ID", {
     weekday: "short",
     day: "numeric",
@@ -97,40 +102,53 @@ export function AdminTopNav({ onOpenSidebar, user }: AdminTopNavProps) {
     year: "numeric",
   });
 
-  const notifications = [
-    {
-      id: 1,
-      title: "Verifikasi Berhasil",
-      desc: "Dokumen CERT-2026-X89F lolos uji SHA-256 via portal publik.",
-      time: "10 menit lalu",
-      unread: true,
-      type: "success",
-    },
-    {
-      id: 2,
-      title: "Pencabutan Kredensial",
-      desc: "1 sertifikat ditandai revoked atas permohonan panitia.",
-      time: "45 menit lalu",
-      unread: true,
-      type: "alert",
-    },
-    {
-      id: 3,
-      title: "Sinkronisasi Ledger Selesai",
-      desc: "Snapshot audit 120 berkas wisuda berhasil diarsipkan.",
-      time: "2 jam lalu",
-      unread: false,
-      type: "info",
-    },
-  ];
+  // Notifikasi kontekstual (Bahasa lebih santai untuk user)
+  const notifications = isAdmin
+    ? [
+        {
+          id: 1,
+          title: "Verifikasi Berhasil",
+          desc: "Dokumen CERT-2026-X89F lolos uji SHA-256 via portal publik.",
+          time: "10 menit lalu",
+          unread: true,
+          type: "success",
+        },
+        {
+          id: 2,
+          title: "Pencabutan Kredensial",
+          desc: "1 sertifikat ditandai revoked atas permohonan panitia.",
+          time: "45 menit lalu",
+          unread: true,
+          type: "alert",
+        },
+      ]
+    : [
+        {
+          id: 1,
+          title: "Sertifikat Berhasil Diterbitkan",
+          desc: "Batch sertifikat seminar Anda telah selesai dan siap diunduh.",
+          time: "15 menit lalu",
+          unread: true,
+          type: "success",
+        },
+        {
+          id: 2,
+          title: "Pengecekan Baru",
+          desc: "Seseorang baru saja memverifikasi sertifikat peserta Anda.",
+          time: "1 jam lalu",
+          unread: false,
+          type: "info",
+        },
+      ];
 
-  const adminName = user?.name || "Sakib Faturrahman";
-  const adminEmail = user?.email || "sakib@verifyed.id";
-  const adminRole = user?.role || "Super Admin";
+  const handleLogout = () => {
+    clearAuth();
+    window.location.href = "/login";
+  };
 
   return (
     <header className="sticky top-0 z-30 bg-white/90 dark:bg-zinc-950/90 backdrop-blur-md border-b border-slate-200/80 dark:border-zinc-800 px-4 md:px-8 py-2.5 flex items-center justify-between select-none">
-      {/* 1. SISI KIRI: Sidebar Toggle & Search Input Bar */}
+      {/* 1. SISI KIRI: Sidebar Toggle & Search Bar */}
       <div className="flex items-center flex-1 max-w-md gap-3 md:gap-4">
         <button
           type="button"
@@ -141,58 +159,56 @@ export function AdminTopNav({ onOpenSidebar, user }: AdminTopNavProps) {
           <Menu className="w-5 h-5" />
         </button>
 
-        {/* Search Bar dengan Shortcut ⌘K */}
+        {/* Search Bar Sederhana */}
         <div className="relative hidden w-full sm:block">
           <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
             <Search className="w-3.5 h-3.5" />
           </div>
           <input
             type="text"
-            placeholder="Cari ID sertifikat, nama penerima, atau instansi..."
-            className="w-full pl-9 pr-14 py-2 rounded-xl text-xs bg-slate-100 dark:bg-zinc-900 border border-transparent focus:border-slate-300 dark:focus:border-zinc-700 text-slate-900 dark:text-zinc-100 placeholder-slate-400 outline-none focus:bg-white dark:focus:bg-zinc-950 transition-all font-medium"
+            placeholder={
+              isAdmin
+                ? "Cari ID sertifikat, peserta, atau instansi..."
+                : "Cari nama peserta atau judul sertifikat..."
+            }
+            className="w-full pl-9 pr-10 py-2 rounded-xl text-xs bg-slate-100 dark:bg-zinc-900 border border-transparent focus:border-slate-300 dark:focus:border-zinc-700 text-slate-900 dark:text-zinc-100 placeholder-slate-400 outline-none focus:bg-white dark:focus:bg-zinc-950 transition-all font-medium"
           />
-          <div className="absolute inset-y-0 right-0 pr-2.5 flex items-center pointer-events-none">
-            <kbd className="px-1.5 py-0.5 text-[9px] font-mono font-bold bg-slate-200 dark:bg-zinc-800 text-slate-600 dark:text-zinc-300 rounded border border-slate-300 dark:border-zinc-700">
-              ⌘K
-            </kbd>
-          </div>
         </div>
       </div>
 
-      {/* 2. SISI KANAN: Tanggal, Web Portal, Theme, Notifikasi, Aksi Buat, & Profil */}
+      {/* 2. SISI KANAN: Tanggal, Portal Link, Theme, Notifikasi, Action Button, & Profil */}
       <div className="flex items-center gap-2 sm:gap-3">
-        {/* Status Tanggal Sistem */}
+        {/* Tanggal Hari Ini */}
         <div className="hidden xl:flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 dark:bg-zinc-900 text-[11px] font-medium text-slate-500 dark:text-zinc-400">
           <Clock className="w-3 h-3 text-slate-400" />
           <span>{today}</span>
         </div>
 
-        {/* Live Portal Publik Link */}
+        {/* Link Portal Cek Sertifikat Publik */}
         <Link
           href="/"
           target="_blank"
           className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-zinc-800 text-xs font-semibold text-slate-600 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-900 transition-colors"
         >
-          <span>Portal Publik</span>
+          <span>Halaman Cek</span>
           <ExternalLink className="w-3.5 h-3.5" />
         </Link>
 
-        {/* Toggle Dark / Light Theme */}
+        {/* Toggle Mode Gelap / Terang */}
         <button
           type="button"
           onClick={toggleTheme}
           className="p-2 transition-colors border rounded-xl border-slate-200 dark:border-zinc-800 text-slate-600 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-900"
-          aria-label="Ganti Tema Tampilan"
-          title={isDark ? "Beralih ke Mode Terang" : "Beralih ke Mode Gelap"}
+          aria-label="Ganti Tema"
         >
           {isDark ? (
-            <Sun className="w-4 h-4 transition-transform duration-300 text-amber-400 hover:rotate-90" />
+            <Sun className="w-4 h-4 text-amber-400" />
           ) : (
-            <Moon className="w-4 h-4 transition-transform duration-300 text-slate-600 hover:-rotate-12" />
+            <Moon className="w-4 h-4 text-slate-600" />
           )}
         </button>
 
-        {/* Dropdown Notifikasi */}
+        {/* Notifikasi Popover */}
         <div className="relative" ref={notifRef}>
           <button
             type="button"
@@ -205,10 +221,12 @@ export function AdminTopNav({ onOpenSidebar, user }: AdminTopNavProps) {
           </button>
 
           {notifOpen && (
-            <div className="absolute right-0 z-50 p-3 mt-2 space-y-2 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 shadow-xl w-80 sm:w-88 rounded-2xl animate-in fade-in slide-in-from-top-2 duration-150">
+            <div className="absolute right-0 z-50 p-3 mt-2 space-y-2 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 shadow-xl w-80 rounded-2xl animate-in fade-in slide-in-from-top-2 duration-150">
               <div className="flex items-center justify-between px-2 py-1 border-b border-slate-100 dark:border-zinc-800">
                 <span className="text-xs font-bold text-[#0e1738] dark:text-zinc-100">
-                  Aktivitas Ledger Dokumen
+                  {isAdmin
+                    ? "Aktivitas Ledger Dokumen"
+                    : "Pemberitahuan Terbaru"}
                 </span>
                 <button
                   type="button"
@@ -252,110 +270,117 @@ export function AdminTopNav({ onOpenSidebar, user }: AdminTopNavProps) {
           )}
         </div>
 
-        {/* Dropdown "+ Buat Baru" */}
-        <div className="relative" ref={createRef}>
-          <button
-            type="button"
-            onClick={() => setCreateOpen(!createOpen)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#0e1738] hover:bg-[#1a254d] dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-[#0e1738] text-xs font-bold transition-all shadow-xs cursor-pointer"
+        {/* ACTION BUTTON (User: Tombol Langsung; Admin: Dropdown Menu Lengkap) */}
+        {isAdmin ? (
+          <div className="relative" ref={createRef}>
+            <button
+              type="button"
+              onClick={() => setCreateOpen(!createOpen)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#0e1738] hover:bg-[#1a254d] text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span className="hidden xs:inline">Aksi Cepat</span>
+              <ChevronDown
+                className={`w-3 h-3 transition-transform ${
+                  createOpen ? "rotate-180" : ""
+                }`}
+              />
+            </button>
+
+            {createOpen && (
+              <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 shadow-xl p-1.5 space-y-0.5 z-50">
+                <Link
+                  href="/admin/certificates/new"
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800"
+                >
+                  <Award className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>Terbitkan Sertifikat</span>
+                </Link>
+                <Link
+                  href="/admin/events/new"
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800"
+                >
+                  <CalendarPlus className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Tambah Agenda Acara</span>
+                </Link>
+                <Link
+                  href="/admin/certificates/revoke"
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800"
+                >
+                  <ShieldAlert className="w-3.5 h-3.5 text-rose-500" />
+                  <span>Cabut Status Sertifikat</span>
+                </Link>
+              </div>
+            )}
+          </div>
+        ) : (
+          <Link
+            href="/user/certificates/upload"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#122253] hover:bg-[#0e1738] text-white text-xs font-bold transition-all shadow-xs"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span className="hidden xs:inline">Terbitkan</span>
-            <ChevronDown
-              className={`w-3 h-3 transition-transform ${
-                createOpen ? "rotate-180" : ""
-              }`}
-            />
-          </button>
-
-          {createOpen && (
-            <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 shadow-xl p-1.5 space-y-0.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
-              <Link
-                href="/admin/certificates/new"
-                className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800 hover:text-slate-900 dark:hover:text-white transition-colors"
-              >
-                <Award className="w-3.5 h-3.5 text-indigo-600" />
-                <span>Terbitkan Sertifikat</span>
-              </Link>
-              <Link
-                href="/admin/events/new"
-                className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800 hover:text-slate-900 dark:hover:text-white transition-colors"
-              >
-                <CalendarPlus className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Tambah Agenda Acara</span>
-              </Link>
-              <Link
-                href="/admin/certificates/revoke"
-                className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800 hover:text-slate-900 dark:hover:text-white transition-colors"
-              >
-                <ShieldAlert className="w-3.5 h-3.5 text-rose-500" />
-                <span>Cabut Status Kredensial</span>
-              </Link>
-            </div>
-          )}
-        </div>
+            <span className="hidden xs:inline">Buat Sertifikat</span>
+          </Link>
+        )}
 
         <div className="h-6 w-px bg-slate-200 dark:bg-zinc-800 mx-0.5 hidden sm:block" />
 
-        {/* Dropdown Profil Administrator */}
+        {/* Profil Dropdown */}
         <div className="relative" ref={profileRef}>
           <button
             type="button"
             onClick={() => setProfileOpen(!profileOpen)}
-            className="flex items-center gap-2 p-1 transition-colors rounded-xl hover:bg-slate-100 dark:hover:bg-zinc-900"
+            className="flex items-center gap-2 p-1 transition-colors rounded-xl hover:bg-slate-100 dark:hover:bg-zinc-900 cursor-pointer"
           >
-            <div className="w-8 h-8 rounded-full bg-[#0e1738] text-white flex items-center justify-center font-bold text-xs shadow-xs border border-slate-200 dark:border-zinc-700">
-              {adminName.charAt(0).toUpperCase()}
+            <div className="w-8 h-8 rounded-full bg-[#0e1738] dark:bg-zinc-100 text-white dark:text-[#0e1738] flex items-center justify-center font-bold text-xs shadow-xs border border-slate-200 dark:border-zinc-700">
+              {userName.charAt(0).toUpperCase()}
             </div>
             <div className="hidden text-left md:block">
               <span className="block text-xs font-bold leading-tight text-[#0e1738] dark:text-zinc-100">
-                {adminName}
+                {userName}
               </span>
-              <span className="block text-[10px] text-slate-400 font-medium lowercase">
-                {adminRole}
+              <span className="block text-[10px] text-slate-400 font-medium">
+                {roleLabel}
               </span>
             </div>
             <ChevronDown className="w-3.5 h-3.5 text-slate-400 hidden md:block" />
           </button>
 
           {profileOpen && (
-            <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 shadow-xl p-1.5 space-y-1 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+            <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 shadow-xl p-1.5 space-y-1 z-50">
               <div className="px-3 py-2 border-b border-slate-100 dark:border-zinc-800">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Otoritas Terverifikasi
+                  Masuk Sebagai
                 </span>
                 <p className="text-xs font-bold truncate text-[#0e1738] dark:text-zinc-100">
-                  {adminEmail}
+                  {userEmail}
                 </p>
               </div>
 
               <Link
-                href="/admin/profile"
+                href={isAdmin ? "/admin/profile" : "/user/profile"}
                 className="flex items-center gap-2 px-3 py-2 text-xs font-medium transition-colors rounded-xl text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800"
               >
-                <User className="w-3.5 h-3.5 text-slate-400" />
+                <UserIcon className="w-3.5 h-3.5 text-slate-400" />
                 <span>Pengaturan Profil</span>
               </Link>
 
               <Link
-                href="/admin/settings"
+                href={isAdmin ? "/admin/settings" : "/user/settings"}
                 className="flex items-center gap-2 px-3 py-2 text-xs font-medium transition-colors rounded-xl text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800"
               >
                 <Settings className="w-3.5 h-3.5 text-slate-400" />
-                <span>Konfigurasi Server</span>
+                <span>Pengaturan Akun</span>
               </Link>
 
               <div className="pt-1 border-t border-slate-100 dark:border-zinc-800">
                 <button
                   type="button"
-                  onClick={() => {
-                    // Penanganan logout sesi auth
-                    window.location.href = "/login";
-                  }}
+                  onClick={handleLogout}
                   className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-rose-600 transition-colors rounded-xl dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
                 >
                   <LogOut className="w-3.5 h-3.5" />
-                  <span>Keluar Sesi</span>
+                  <span>Keluar Akun</span>
                 </button>
               </div>
             </div>
@@ -365,3 +390,12 @@ export function AdminTopNav({ onOpenSidebar, user }: AdminTopNavProps) {
     </header>
   );
 }
+
+// Export alias untuk kompatibilitas import lama
+export const AdminTopNav = (props: AppTopNavProps) => (
+  <AppTopNav {...props} roleOverride="admin" />
+);
+
+export const UserTopNav = (props: AppTopNavProps) => (
+  <AppTopNav {...props} roleOverride="user" />
+);

@@ -3,11 +3,12 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { AdminSidebar } from "@/components/layouts/admin/admin-sidebar";
-import { AdminTopNav } from "@/components/layouts/admin/admin-topnav";
+import { AppSidebar } from "@/components/layouts/dashboard/app-sidebar";
+import { AppTopNav } from "@/components/layouts/dashboard/app-topnav";
 import { AdminWelcomeHeader } from "@/features/dashboard/components/admin/admin-welcome-header";
 import { AdminNotificationsBox } from "@/features/dashboard/components/admin/admin-notifications-box";
 import { AdminAssignmentsBox } from "@/features/dashboard/components/admin/admin-assignments-box";
+import { useAuthStore } from "@/stores/auth-store";
 import {
   Award,
   FileCheck2,
@@ -27,7 +28,6 @@ const quickStats = [
     change: "+4 Institusi Baru",
     icon: Building2,
     color: "text-sky-600 dark:text-sky-400",
-    badgeColor: "bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300",
   },
   {
     id: "total-events",
@@ -37,8 +37,6 @@ const quickStats = [
     change: "12 Sedang Berjalan",
     icon: CalendarDays,
     color: "text-indigo-600 dark:text-indigo-400",
-    badgeColor:
-      "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300",
   },
   {
     id: "active-certs",
@@ -48,8 +46,6 @@ const quickStats = [
     change: "+12% Minggu Ini",
     icon: ShieldCheck,
     color: "text-emerald-600 dark:text-emerald-400",
-    badgeColor:
-      "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300",
   },
   {
     id: "verified-logs",
@@ -59,8 +55,6 @@ const quickStats = [
     change: "Akurasi 100%",
     icon: FileCheck2,
     color: "text-[#0e1738] dark:text-slate-100",
-    badgeColor:
-      "bg-slate-100 text-slate-800 dark:bg-zinc-800 dark:text-zinc-200",
   },
   {
     id: "revoked-certs",
@@ -70,8 +64,6 @@ const quickStats = [
     change: "Audit Status Revoked",
     icon: AlertTriangle,
     color: "text-rose-600 dark:text-rose-400",
-    badgeColor:
-      "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300",
   },
   {
     id: "overall-issuance",
@@ -81,32 +73,37 @@ const quickStats = [
     change: "Ledger Sinkron",
     icon: Award,
     color: "text-amber-600 dark:text-amber-400",
-    badgeColor:
-      "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300",
   },
 ];
 
 export default function AdminDashboardPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const user = useAuthStore((state) => state.user);
 
   return (
     <div className="flex min-h-screen bg-[#faf8f5] dark:bg-zinc-950 font-sans antialiased selection:bg-[#0e1738] selection:text-white">
-      {/* 1. Sidebar Navigasi */}
-      <AdminSidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
+      {/* 1. Unified Sidebar Navigasi (Mode Admin) */}
+      <AppSidebar
+        isOpen={isSidebarOpen}
+        setIsOpen={setIsSidebarOpen}
+        roleOverride="admin"
+      />
 
-      {/* 2. Workspace Kanan (Fluid & Scaled) */}
+      {/* 2. Workspace Kanan */}
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
-        <AdminTopNav onOpenSidebar={() => setIsSidebarOpen(true)} />
+        <AppTopNav
+          onOpenSidebar={() => setIsSidebarOpen(true)}
+          roleOverride="admin"
+        />
 
-        {/* Kontainer Utama Adaptif */}
+        {/* Kontainer Utama */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 2xl:p-10 w-full max-w-[1720px] mx-auto space-y-5 2xl:space-y-7">
-          {/* Welcome Header Formal */}
           <AdminWelcomeHeader
-            adminName="Sakib Faturrahman"
+            adminName={user?.name || "Administrator"}
             roleTitle="Super Administrator & Pengawas Integritas"
           />
 
-          {/* Grid Metrik Eksekutif (6 Kartu Terstruktur Sesuai Schema Docs) */}
+          {/* Grid Metrik Eksekutif */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6 gap-3.5 2xl:gap-5">
             {quickStats.map((stat) => {
               const Icon = stat.icon;
@@ -149,7 +146,7 @@ export default function AdminDashboardPage() {
             })}
           </div>
 
-          {/* Grid Interaktif Bawah: Log Audit & Antrean Tugas */}
+          {/* Grid Interaktif Bawah */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 2xl:gap-7 items-stretch pb-10">
             <div className="lg:col-span-6 flex flex-col">
               <AdminNotificationsBox />

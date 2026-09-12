@@ -3,9 +3,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { UserSidebar } from "@/components/layouts/user/user-sidebar";
-import { AdminTopNav } from "@/components/layouts/admin/admin-topnav";
+import { AppSidebar } from "@/components/layouts/dashboard/app-sidebar";
+import { AppTopNav } from "@/components/layouts/dashboard/app-topnav";
 import { UserWelcomeHeader } from "@/features/dashboard/components/user/user-welcome-header";
+import { useAuthStore } from "@/stores/auth-store";
 import {
   CalendarDays,
   Award,
@@ -17,8 +18,7 @@ import {
   Plus,
 } from "lucide-react";
 
-// Mock Metrik User mematuhi Dokumen Spesifikasi:
-// Total Event, Total Certificate, Active Certificate, Revoked Certificate, Total Verification
+// Mock Metrik User (Total Event, Total Certificate, Active, Revoked, Total Verification)
 const userMetrics = [
   {
     label: "Total Agenda Event",
@@ -30,7 +30,7 @@ const userMetrics = [
   {
     label: "Total Sertifikat Terbit",
     value: "150",
-    desc: "Telah diberi segel QR",
+    desc: "Telah diberi barcode resmi",
     icon: Award,
     color: "text-[#0e1738] dark:text-zinc-100",
   },
@@ -76,31 +76,32 @@ const recentEvents = [
 
 export default function UserDashboardPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const user = useAuthStore((state) => state.user);
 
   return (
     <div className="flex min-h-screen bg-[#faf8f5] dark:bg-zinc-950 font-sans antialiased">
-      {/* 1. Sidebar User */}
-      <UserSidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
+      {/* 1. Unified Sidebar */}
+      <AppSidebar
+        isOpen={isSidebarOpen}
+        setIsOpen={setIsSidebarOpen}
+        roleOverride="user"
+      />
 
       {/* 2. Workspace Area */}
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
-        <AdminTopNav
+        <AppTopNav
           onOpenSidebar={() => setIsSidebarOpen(true)}
-          user={{
-            name: "Aditya Pratama",
-            email: "akademik@unper.ac.id",
-            role: "Universitas Perjuangan",
-          }}
+          roleOverride="user"
         />
 
         <main className="flex-1 px-4 py-4 sm:px-6 sm:py-6 lg:px-8 xl:px-10 2xl:px-12 w-full max-w-[1680px] mx-auto space-y-4 sm:space-y-5">
-          {/* Welcome Banner */}
+          {/* Welcome Banner Dinamis dari Akun Login */}
           <UserWelcomeHeader
-            organizationName="Universitas Perjuangan"
-            representativeName="Aditya Pratama"
+            organizationName={user?.name || "Lembaga Terdaftar"}
+            representativeName={user?.name?.split(" ")[0] || "Penyelenggara"}
           />
 
-          {/* 5 Kartu Metrik User Berdasarkan Spesifikasi Dokumen */}
+          {/* Kartu Metrik Ringkasan */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3.5">
             {userMetrics.map((metric, idx) => {
               const Icon = metric.icon;
@@ -128,7 +129,7 @@ export default function UserDashboardPage() {
             })}
           </div>
 
-          {/* Grid Dua Kolom: Agenda Acara Terkini & Riwayat Validasi Masuk */}
+          {/* Grid Dua Kolom: Agenda Acara Terkini & Panduan Alur */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 items-stretch pb-6">
             {/* Kolom Kiri: Agenda Acara Terbaru */}
             <div className="lg:col-span-7 bg-white dark:bg-zinc-900 border border-slate-200/90 dark:border-zinc-800 rounded-3xl p-6 shadow-xs flex flex-col justify-between space-y-4">
@@ -137,7 +138,7 @@ export default function UserDashboardPage() {
                   Agenda Acara Anda
                 </span>
                 <Link
-                  href="/dashboard/events"
+                  href="/user/events"
                   className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold hover:underline flex items-center gap-1"
                 >
                   <span>Lihat Semua</span>
@@ -170,18 +171,18 @@ export default function UserDashboardPage() {
               </div>
 
               <Link
-                href="/dashboard/events/new"
+                href="/user/events/new"
                 className="w-full py-3 border border-dashed border-slate-300 dark:border-zinc-700 rounded-2xl text-xs text-slate-500 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors flex items-center justify-center gap-1.5 font-semibold"
               >
                 <Plus size={14} /> Tambah Agenda Acara Baru
               </Link>
             </div>
 
-            {/* Kolom Kanan: Panduan Cepat Penerbitan QR */}
+            {/* Kolom Kanan: Panduan Alur Penerbitan */}
             <div className="lg:col-span-5 bg-white dark:bg-zinc-900 border border-slate-200/90 dark:border-zinc-800 rounded-3xl p-6 shadow-xs flex flex-col justify-between space-y-4">
               <div className="pb-2 border-b border-slate-100 dark:border-zinc-800">
                 <span className="text-sm font-bold text-[#0e1738] dark:text-zinc-100">
-                  Alur Penerbitan Kredensial
+                  Alur Mudah Penerbitan Dokumen
                 </span>
               </div>
 
@@ -192,11 +193,11 @@ export default function UserDashboardPage() {
                   </div>
                   <div>
                     <h5 className="font-bold text-slate-800 dark:text-zinc-200">
-                      Pilih / Buat Event
+                      Tentukan Agenda Acara
                     </h5>
                     <p className="text-slate-400 text-[11px] mt-0.5 leading-relaxed">
-                      Sertifikat wajib dikelompokkan ke dalam satu agenda
-                      kegiatan resmi[cite: 1].
+                      Kelompokkan sertifikat berdasarkan kegiatan resmi
+                      pelatihan atau seminar Anda.
                     </p>
                   </div>
                 </div>
@@ -210,8 +211,8 @@ export default function UserDashboardPage() {
                       Unggah File PDF
                     </h5>
                     <p className="text-slate-400 text-[11px] mt-0.5 leading-relaxed">
-                      Mendukung unggah satu dokumen (single) atau banyak dokumen
-                      (bulk upload) sekaligus[cite: 1].
+                      Unggah berkas sertifikat satu per satu atau langsung
+                      sekaligus banyak (bulk upload).
                     </p>
                   </div>
                 </div>
@@ -222,21 +223,21 @@ export default function UserDashboardPage() {
                   </div>
                   <div>
                     <h5 className="font-bold text-slate-800 dark:text-zinc-200">
-                      Visual QR Stamping
+                      Atur Posisi Barcode
                     </h5>
                     <p className="text-slate-400 text-[11px] mt-0.5 leading-relaxed">
-                      Tentukan posisi dan ukuran stempel QR secara visual pada
-                      dokumen sertifikat[cite: 1].
+                      Geser dan posisikan kode QR verifikasi langsung pada
+                      lembar sertifikat.
                     </p>
                   </div>
                 </div>
               </div>
 
               <Link
-                href="/dashboard/certificates/upload"
-                className="w-full py-3 rounded-2xl bg-[#0e1738] hover:bg-[#1a254d] text-white text-xs font-semibold text-center shadow-xs transition-colors"
+                href="/user/certificates/upload"
+                className="w-full py-3 rounded-2xl bg-[#122253] hover:bg-[#0e1738] text-white text-xs font-semibold text-center shadow-xs transition-colors"
               >
-                Buka Wizard Penerbitan
+                Mulai Terbitkan Sertifikat
               </Link>
             </div>
           </div>

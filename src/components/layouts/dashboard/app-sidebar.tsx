@@ -1,3 +1,4 @@
+// src/components/layouts/dashboard/app-sidebar.tsx
 "use client";
 
 import React, { useState } from "react";
@@ -16,18 +17,94 @@ import {
   PanelLeft,
   ShieldCheck,
   Activity,
+  BarChart3,
+  Bell,
+  History,
 } from "lucide-react";
+import { useAuthStore } from "@/stores/auth-store";
 
-const userMenuGroups = [
+export interface NavMenuItem {
+  id: string;
+  icon: React.ElementType;
+  label: string;
+  href: string;
+  badge?: string | null;
+}
+
+export interface NavMenuGroup {
+  title: string;
+  items: NavMenuItem[];
+}
+
+// 1. Menu Konfigurasi Role Admin
+const adminMenuGroups: NavMenuGroup[] = [
   {
     title: "Ikhtisar",
     items: [
+      { id: "dashboard", icon: LayoutGrid, label: "Dashboard", href: "/admin" },
       {
-        id: "dashboard",
-        icon: LayoutGrid,
-        label: "Dashboard",
-        href: "/user",
+        id: "statistics",
+        icon: BarChart3,
+        label: "Statistik & Laporan",
+        href: "/admin/statistics",
       },
+      {
+        id: "alerts",
+        icon: Bell,
+        label: "Notifikasi Sistem",
+        href: "/admin/notifikasi",
+        badge: "3",
+      },
+    ],
+  },
+  {
+    title: "Manajemen Utama",
+    items: [
+      {
+        id: "organizations",
+        icon: Building2,
+        label: "Organisasi & User",
+        href: "/admin/users",
+      },
+      {
+        id: "events",
+        icon: CalendarDays,
+        label: "Agenda & Event",
+        href: "/admin/events",
+      },
+      {
+        id: "certificates",
+        icon: Award,
+        label: "Daftar Sertifikat",
+        href: "/admin/certificates",
+      },
+    ],
+  },
+  {
+    title: "Audit & Sistem",
+    items: [
+      {
+        id: "logs",
+        icon: History,
+        label: "Log Verifikasi",
+        href: "/admin/logs",
+      },
+      {
+        id: "settings",
+        icon: Settings,
+        label: "Pengaturan",
+        href: "/admin/settings",
+      },
+    ],
+  },
+];
+
+// 2. Menu Konfigurasi Role User / Organisasi
+const userMenuGroups: NavMenuGroup[] = [
+  {
+    title: "Ikhtisar",
+    items: [
+      { id: "dashboard", icon: LayoutGrid, label: "Dashboard", href: "/user" },
     ],
   },
   {
@@ -72,15 +149,25 @@ const userMenuGroups = [
   },
 ];
 
-export function UserSidebar({
+export function AppSidebar({
   isOpen,
   setIsOpen,
+  roleOverride,
 }: {
   isOpen: boolean;
   setIsOpen: (val: boolean) => void;
+  roleOverride?: "admin" | "user";
 }) {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const user = useAuthStore((state) => state.user);
+
+  // Deteksi role berdasarkan prop atau dari auth store (default: user)
+  const currentRole =
+    roleOverride || (user?.role === "admin" ? "admin" : "user");
+  const isAdmin = currentRole === "admin";
+  const menuGroups = isAdmin ? adminMenuGroups : userMenuGroups;
+  const homeHref = isAdmin ? "/admin" : "/user";
 
   const SidebarBody = () => (
     <aside
@@ -88,10 +175,10 @@ export function UserSidebar({
         isCollapsed ? "w-[76px] 2xl:w-[88px]" : "w-[260px] 2xl:w-[310px]"
       }`}
     >
-      {/* 1. Header Brand */}
+      {/* 1. Header & Brand */}
       <div className="h-16 2xl:h-20 px-4 2xl:px-6 flex items-center justify-between border-b border-slate-100 dark:border-zinc-800/80 shrink-0">
         <Link
-          href="/dashboard"
+          href={homeHref}
           className="flex items-center gap-3 overflow-hidden"
         >
           <div className="w-9 h-9 2xl:w-11 2xl:h-11 rounded-xl 2xl:rounded-2xl bg-[#0e1738] text-white flex items-center justify-center shrink-0 shadow-sm">
@@ -110,8 +197,14 @@ export function UserSidebar({
                 <span className="font-extrabold text-base 2xl:text-xl tracking-tight text-[#0e1738] dark:text-zinc-100">
                   Verify<span className="text-[#3b5998]">Ed</span>
                 </span>
-                <span className="text-[10px] 2xl:text-xs font-semibold text-indigo-700 bg-indigo-50 dark:bg-indigo-950/50 dark:text-indigo-300 px-1.5 py-0.5 rounded border border-indigo-200/60 dark:border-indigo-800">
-                  Organisasi
+                <span
+                  className={`text-[10px] 2xl:text-xs font-semibold px-1.5 py-0.5 rounded ${
+                    isAdmin
+                      ? "text-slate-600 bg-slate-100 dark:bg-zinc-800 dark:text-zinc-300"
+                      : "text-indigo-700 bg-indigo-50 dark:bg-indigo-950/50 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800"
+                  }`}
+                >
+                  {isAdmin ? "Admin" : "Organisasi"}
                 </span>
               </motion.div>
             )}
@@ -142,9 +235,9 @@ export function UserSidebar({
         </button>
       </div>
 
-      {/* 2. Menu Navigation */}
+      {/* 2. Navigation Lists */}
       <div className="flex-1 overflow-y-auto px-3 2xl:px-4 py-4 2xl:py-6 space-y-5 2xl:space-y-7 no-scrollbar">
-        {userMenuGroups.map((group, idx) => (
+        {menuGroups.map((group, idx) => (
           <div key={idx} className="space-y-1 2xl:space-y-1.5">
             {!isCollapsed ? (
               <p className="text-[11px] 2xl:text-xs font-semibold text-slate-400 dark:text-zinc-500 px-3 2xl:px-4 py-1">
@@ -183,7 +276,20 @@ export function UserSidebar({
                     />
 
                     {!isCollapsed && (
-                      <span className="truncate">{item.label}</span>
+                      <div className="flex items-center justify-between flex-1 truncate">
+                        <span className="truncate">{item.label}</span>
+                        {item.badge && (
+                          <span
+                            className={`text-[10px] 2xl:text-xs font-bold px-1.5 2xl:px-2 py-0.5 rounded-full ${
+                              isActive
+                                ? "bg-white/20 text-white"
+                                : "bg-slate-100 text-slate-600 dark:bg-zinc-800 dark:text-zinc-300"
+                            }`}
+                          >
+                            {item.badge}
+                          </span>
+                        )}
+                      </div>
                     )}
 
                     {isCollapsed && (
@@ -199,24 +305,43 @@ export function UserSidebar({
         ))}
       </div>
 
-      {/* 3. Footer Quota Card */}
+      {/* 3. Footer Card (Kondisional: Node Primer vs Kuota Sertifikat) */}
       <div className="p-3 2xl:p-4 border-t border-slate-100 dark:border-zinc-800/80 bg-slate-50/60 dark:bg-zinc-900/40">
         {!isCollapsed ? (
-          <div className="p-3 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-            <div className="flex items-center justify-between text-[11px] font-bold text-[#0e1738] dark:text-zinc-200">
-              <span>Kuota Sertifikat</span>
-              <span className="text-emerald-600">85% Tersedia</span>
+          isAdmin ? (
+            /* Footer Status Node (Admin) */
+            <div className="p-2.5 2xl:p-3.5 rounded-xl 2xl:rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex items-center justify-between">
+              <div className="flex items-center gap-2.5 2xl:gap-3">
+                <span className="w-2 h-2 2xl:w-2.5 2xl:h-2.5 rounded-full bg-emerald-600 shrink-0" />
+                <div>
+                  <p className="text-[11px] 2xl:text-xs font-bold text-[#0e1738] dark:text-zinc-200 leading-tight">
+                    Node Primer
+                  </p>
+                  <p className="text-[10px] 2xl:text-[11px] text-slate-500">
+                    SHA-256 Siaga
+                  </p>
+                </div>
+              </div>
+              <Activity className="w-3.5 h-3.5 2xl:w-4 2xl:h-4 text-slate-400" />
             </div>
-            <div className="w-full bg-slate-100 dark:bg-zinc-800 h-1.5 rounded-full mt-2 overflow-hidden">
-              <div className="bg-[#0e1738] dark:bg-indigo-500 h-full w-[15%]" />
+          ) : (
+            /* Footer Kuota Sertifikat (User/Organisasi) */
+            <div className="p-3 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+              <div className="flex items-center justify-between text-[11px] font-bold text-[#0e1738] dark:text-zinc-200">
+                <span>Kuota Sertifikat</span>
+                <span className="text-emerald-600">85% Tersedia</span>
+              </div>
+              <div className="w-full bg-slate-100 dark:bg-zinc-800 h-1.5 rounded-full mt-2 overflow-hidden">
+                <div className="bg-[#0e1738] dark:bg-indigo-500 h-full w-[15%]" />
+              </div>
+              <p className="text-[10px] text-slate-400 mt-2">
+                150 / 1.000 Dokumen Diterbitkan
+              </p>
             </div>
-            <p className="text-[10px] text-slate-400 mt-2">
-              150 / 1.000 Dokumen Diterbitkan
-            </p>
-          </div>
+          )
         ) : (
-          <div className="flex justify-center py-1">
-            <Activity className="w-4 h-4 text-emerald-600" />
+          <div className="flex justify-center py-1 2xl:py-2">
+            <span className="w-2 h-2 2xl:w-2.5 2xl:h-2.5 rounded-full bg-emerald-600" />
           </div>
         )}
       </div>
@@ -254,3 +379,14 @@ export function UserSidebar({
     </>
   );
 }
+
+// Export alias backward-compatibility agar tidak perlu mengubah semua import lama
+export const AdminSidebar = (props: {
+  isOpen: boolean;
+  setIsOpen: (v: boolean) => void;
+}) => <AppSidebar {...props} roleOverride="admin" />;
+
+export const UserSidebar = (props: {
+  isOpen: boolean;
+  setIsOpen: (v: boolean) => void;
+}) => <AppSidebar {...props} roleOverride="user" />;
