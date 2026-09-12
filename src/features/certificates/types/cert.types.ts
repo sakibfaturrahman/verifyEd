@@ -1,4 +1,3 @@
-// src/features/certificates/types/cert.types.ts
 export interface CertificateItem {
   id: string;
   certificateNumber: string;
