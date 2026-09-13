@@ -9,7 +9,7 @@ import { UserEventToolbar } from "@/features/events/components/user/user-event-t
 import { UserEventFormModal } from "@/features/events/components/user/user-event-form-modal";
 import { UserEventDetailModal } from "@/features/events/components/user/user-event-detail-modal";
 import { EventDeleteModal } from "@/features/events/components/event-delete-modal";
-import { EventItem } from "@/features/events/types/event.types";
+import { EventItem } from "@/features/events/hooks/use-admin-events";
 import {
   CalendarDays,
   MapPin,

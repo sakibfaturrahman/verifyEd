@@ -10,7 +10,7 @@ import {
   ExternalLink,
   Edit2,
 } from "lucide-react";
-import { EventItem } from "../../types/event.types";
+import { EventItem } from "../../hooks/use-admin-events";
 
 interface UserEventDetailModalProps {
   event: EventItem | null;

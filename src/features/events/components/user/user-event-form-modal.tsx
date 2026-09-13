@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { X, CalendarDays, MapPin, FileText, Save } from "lucide-react";
-import { EventItem } from "../../types/event.types";
+import { EventItem } from "../../hooks/use-admin-events";
 
 interface UserEventFormModalProps {
   isOpen: boolean;

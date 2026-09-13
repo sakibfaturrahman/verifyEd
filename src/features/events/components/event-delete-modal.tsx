@@ -1,19 +1,21 @@
 // src/features/events/components/event-delete-modal.tsx
 "use client";
 
-import { AlertTriangle, X } from "lucide-react";
-import { EventItem } from "../types/event.types";
+import { AlertTriangle, X, Loader2 } from "lucide-react";
+import { EventItem } from "../hooks/use-admin-events";
 
 interface EventDeleteModalProps {
   event: EventItem | null;
   onClose: () => void;
   onConfirm: (eventId: string) => void;
+  isDeleting: boolean;
 }
 
 export function EventDeleteModal({
   event,
   onClose,
   onConfirm,
+  isDeleting,
 }: EventDeleteModalProps) {
   if (!event) return null;
 
@@ -41,24 +43,26 @@ export function EventDeleteModal({
           <strong className="text-slate-900 dark:text-white">
             &ldquo;{event.name}&rdquo;
           </strong>
-          ? Agenda yang memiliki keterikatan sertifikat aktif akan membatalkan
-          status validasi.
+          ? Seluruh data kegiatan ini akan dihapus permanen dari sistem.
         </p>
 
         <div className="flex justify-end gap-2 pt-2">
           <button
             type="button"
+            disabled={isDeleting}
             onClick={onClose}
-            className="px-4 py-2 rounded-xl border border-slate-200 dark:border-zinc-700 text-xs font-semibold text-slate-600 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors"
+            className="px-4 py-2 rounded-xl border border-slate-200 dark:border-zinc-700 text-xs font-semibold text-slate-600 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer disabled:opacity-50"
           >
             Batal
           </button>
           <button
             type="button"
+            disabled={isDeleting}
             onClick={() => onConfirm(event.id)}
-            className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold shadow-xs transition-colors"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer disabled:opacity-50"
           >
-            Konfirmasi Hapus
+            {isDeleting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+            <span>{isDeleting ? "Menghapus..." : "Konfirmasi Hapus"}</span>
           </button>
         </div>
       </div>
