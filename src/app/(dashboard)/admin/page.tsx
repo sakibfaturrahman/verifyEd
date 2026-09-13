@@ -8,7 +8,7 @@ import { AppTopNav } from "@/components/layouts/dashboard/app-topnav";
 import { AdminWelcomeHeader } from "@/features/dashboard/components/admin/admin-welcome-header";
 import { AdminNotificationsBox } from "@/features/dashboard/components/admin/admin-notifications-box";
 import { AdminAssignmentsBox } from "@/features/dashboard/components/admin/admin-assignments-box";
-import { useAuthStore } from "@/stores/auth-store";
+import { useAdminDashboardQuery } from "@/features/dashboard/hooks/use-dashboard-queries";
 import {
   Award,
   FileCheck2,
@@ -17,95 +17,109 @@ import {
   AlertTriangle,
   ShieldCheck,
   TrendingUp,
+  RefreshCw,
 } from "lucide-react";
-
-const quickStats = [
-  {
-    id: "total-orgs",
-    label: "Organisasi Terdaftar",
-    value: "84",
-    unit: "Mitra",
-    change: "+4 Institusi Baru",
-    icon: Building2,
-    color: "text-sky-600 dark:text-sky-400",
-  },
-  {
-    id: "total-events",
-    label: "Total Agenda Acara",
-    value: "192",
-    unit: "Kegiatan",
-    change: "12 Sedang Berjalan",
-    icon: CalendarDays,
-    color: "text-indigo-600 dark:text-indigo-400",
-  },
-  {
-    id: "active-certs",
-    label: "Sertifikat Aktif",
-    value: "3.420",
-    unit: "Dokumen",
-    change: "+12% Minggu Ini",
-    icon: ShieldCheck,
-    color: "text-emerald-600 dark:text-emerald-400",
-  },
-  {
-    id: "verified-logs",
-    label: "Validasi Lolos Uji",
-    value: "14.890",
-    unit: "Pemeriksaan",
-    change: "Akurasi 100%",
-    icon: FileCheck2,
-    color: "text-[#0e1738] dark:text-slate-100",
-  },
-  {
-    id: "revoked-certs",
-    label: "Dokumen Dicabut",
-    value: "6",
-    unit: "Berkas",
-    change: "Audit Status Revoked",
-    icon: AlertTriangle,
-    color: "text-rose-600 dark:text-rose-400",
-  },
-  {
-    id: "overall-issuance",
-    label: "Total Penerbitan",
-    value: "3.426",
-    unit: "Lembar",
-    change: "Ledger Sinkron",
-    icon: Award,
-    color: "text-amber-600 dark:text-amber-400",
-  },
-];
 
 export default function AdminDashboardPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const user = useAuthStore((state) => state.user);
+  const { data, isPending, isRefetching, refetch } = useAdminDashboardQuery();
+
+  const stats = data?.stats;
+
+  const metricCards = [
+    {
+      id: "total-orgs",
+      label: "Organisasi Terdaftar",
+      value: stats ? stats.totalOrganizations.toLocaleString("id-ID") : "...",
+      unit: "Mitra",
+      change: "Status Terverifikasi",
+      icon: Building2,
+      color: "text-sky-600 dark:text-sky-400",
+    },
+    {
+      id: "total-events",
+      label: "Total Agenda Acara",
+      value: stats ? stats.totalEvents.toLocaleString("id-ID") : "...",
+      unit: "Kegiatan",
+      change: "Seluruh Periode",
+      icon: CalendarDays,
+      color: "text-indigo-600 dark:text-indigo-400",
+    },
+    {
+      id: "active-certs",
+      label: "Sertifikat Aktif",
+      value: stats ? stats.activeCertificates.toLocaleString("id-ID") : "...",
+      unit: "Dokumen",
+      change: "Keabsahan Terjamin",
+      icon: ShieldCheck,
+      color: "text-emerald-600 dark:text-emerald-400",
+    },
+    {
+      id: "verified-logs",
+      label: "Validasi Lolos Uji",
+      value: stats ? stats.totalVerifications.toLocaleString("id-ID") : "...",
+      unit: "Pemeriksaan",
+      change: "Akurasi Kriptografi 100%",
+      icon: FileCheck2,
+      color: "text-[#0e1738] dark:text-slate-100",
+    },
+    {
+      id: "revoked-certs",
+      label: "Dokumen Dicabut",
+      value: stats ? stats.revokedCertificates.toLocaleString("id-ID") : "...",
+      unit: "Berkas",
+      change: "Status Revoked",
+      icon: AlertTriangle,
+      color: "text-rose-600 dark:text-rose-400",
+    },
+    {
+      id: "overall-issuance",
+      label: "Total Penerbitan",
+      value: stats ? stats.totalIssued.toLocaleString("id-ID") : "...",
+      unit: "Lembar",
+      change: "Ledger Database Sinkron",
+      icon: Award,
+      color: "text-amber-600 dark:text-amber-400",
+    },
+  ];
 
   return (
     <div className="flex min-h-screen bg-[#faf8f5] dark:bg-zinc-950 font-sans antialiased selection:bg-[#0e1738] selection:text-white">
-      {/* 1. Unified Sidebar Navigasi (Mode Admin) */}
       <AppSidebar
         isOpen={isSidebarOpen}
         setIsOpen={setIsSidebarOpen}
         roleOverride="admin"
       />
 
-      {/* 2. Workspace Kanan */}
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
         <AppTopNav
           onOpenSidebar={() => setIsSidebarOpen(true)}
           roleOverride="admin"
         />
 
-        {/* Kontainer Utama */}
         <main className="flex-1 p-4 sm:p-6 lg:p-8 2xl:p-10 w-full max-w-[1720px] mx-auto space-y-5 2xl:space-y-7">
-          <AdminWelcomeHeader
-            adminName={user?.name || "Administrator"}
-            roleTitle="Super Administrator & Pengawas Integritas"
-          />
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <AdminWelcomeHeader />
+            <button
+              type="button"
+              onClick={() => refetch()}
+              disabled={isRefetching}
+              className="self-start sm:self-auto inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 text-xs font-semibold text-slate-700 dark:text-zinc-300 hover:bg-slate-50 transition-all shadow-2xs cursor-pointer active:scale-95"
+            >
+              <RefreshCw
+                size={13}
+                className={
+                  isRefetching
+                    ? "animate-spin text-indigo-600"
+                    : "text-slate-400"
+                }
+              />
+              <span>{isRefetching ? "Menyinkronkan..." : "Perbarui Data"}</span>
+            </button>
+          </div>
 
-          {/* Grid Metrik Eksekutif */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6 gap-3.5 2xl:gap-5">
-            {quickStats.map((stat) => {
+            {metricCards.map((stat) => {
               const Icon = stat.icon;
 
               return (
@@ -128,9 +142,13 @@ export default function AdminDashboardPage() {
 
                   <div className="mt-3 2xl:mt-4">
                     <div className="flex items-baseline gap-1.5">
-                      <span className="text-2xl 2xl:text-3xl font-extrabold tracking-tight text-[#0e1738] dark:text-zinc-50">
-                        {stat.value}
-                      </span>
+                      {isPending ? (
+                        <div className="h-8 w-16 bg-slate-100 dark:bg-zinc-800 animate-pulse rounded-md" />
+                      ) : (
+                        <span className="text-2xl 2xl:text-3xl font-extrabold tracking-tight text-[#0e1738] dark:text-zinc-50">
+                          {stat.value}
+                        </span>
+                      )}
                       <span className="text-[11px] 2xl:text-xs font-semibold text-slate-400 dark:text-zinc-500">
                         {stat.unit}
                       </span>
@@ -146,7 +164,6 @@ export default function AdminDashboardPage() {
             })}
           </div>
 
-          {/* Grid Interaktif Bawah */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 2xl:gap-7 items-stretch pb-10">
             <div className="lg:col-span-6 flex flex-col">
               <AdminNotificationsBox />
