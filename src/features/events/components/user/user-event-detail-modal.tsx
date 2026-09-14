@@ -1,4 +1,3 @@
-// src/features/events/components/user-event-detail-modal.tsx
 "use client";
 
 import Link from "next/link";
@@ -9,13 +8,14 @@ import {
   X,
   ExternalLink,
   Edit2,
+  Building2,
 } from "lucide-react";
-import { EventItem } from "../../hooks/use-admin-events";
+import { UserEventItem } from "../../hooks/use-user-events";
 
 interface UserEventDetailModalProps {
-  event: EventItem | null;
+  event: UserEventItem | null;
   onClose: () => void;
-  onEdit: (event: EventItem) => void;
+  onEdit: (event: UserEventItem) => void;
 }
 
 export function UserEventDetailModal({
@@ -38,7 +38,7 @@ export function UserEventDetailModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-zinc-200"
+            className="p-1 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-zinc-200 cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -56,19 +56,33 @@ export function UserEventDetailModal({
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <span className="text-slate-400 font-medium">Pelaksanaan</span>
+              <span className="text-slate-400 font-medium">Penyelenggara</span>
               <p className="font-semibold text-slate-800 dark:text-zinc-200 mt-0.5 flex items-center gap-1.5">
-                <CalendarDays size={13} className="text-slate-400" />
-                <span>{event.eventDate}</span>
+                <Building2 size={13} className="text-slate-400 shrink-0" />
+                <span className="truncate">{event.organizer}</span>
               </p>
             </div>
             <div>
-              <span className="text-slate-400 font-medium">Lokasi</span>
-              <p className="font-semibold text-slate-800 dark:text-zinc-200 mt-0.5 flex items-center gap-1.5">
-                <MapPin size={13} className="text-slate-400" />
-                <span>{event.location}</span>
+              <span className="text-slate-400 font-medium">Pelaksanaan</span>
+              <p className="font-semibold text-slate-800 dark:text-zinc-200 mt-0.5 flex items-center gap-1.5 font-mono">
+                <CalendarDays size={13} className="text-slate-400 shrink-0" />
+                <span>
+                  {new Date(event.event_date).toLocaleDateString("id-ID", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })}
+                </span>
               </p>
             </div>
+          </div>
+
+          <div>
+            <span className="text-slate-400 font-medium">Lokasi</span>
+            <p className="font-semibold text-slate-800 dark:text-zinc-200 mt-0.5 flex items-center gap-1.5">
+              <MapPin size={13} className="text-slate-400 shrink-0" />
+              <span>{event.location || "Daring / Tidak Ditentukan"}</span>
+            </p>
           </div>
 
           <div className="p-3.5 bg-slate-50 dark:bg-zinc-800/60 rounded-xl border border-slate-200 dark:border-zinc-700 flex items-center justify-between">
@@ -77,7 +91,7 @@ export function UserEventDetailModal({
             </span>
             <span className="font-mono font-bold text-sm text-[#0e1738] dark:text-zinc-100 flex items-center gap-1.5">
               <Award size={15} className="text-indigo-600" />
-              <span>{event.certificatesCount} Dokumen</span>
+              <span>{event.certificatesCount || 0} Dokumen</span>
             </span>
           </div>
 
@@ -96,7 +110,7 @@ export function UserEventDetailModal({
           <button
             type="button"
             onClick={() => onEdit(event)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-zinc-700 text-xs font-semibold text-slate-600 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-zinc-700 text-xs font-semibold text-slate-600 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
           >
             <Edit2 size={13} />
             <span>Edit Acara</span>
@@ -106,12 +120,12 @@ export function UserEventDetailModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl border border-slate-200 dark:border-zinc-700 text-xs font-semibold text-slate-600 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors"
+              className="px-4 py-2 rounded-xl border border-slate-200 dark:border-zinc-700 text-xs font-semibold text-slate-600 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
             >
               Tutup
             </button>
             <Link
-              href={`/dashboard/certificates?event=${event.id}`}
+              href={`/user/certificates?event_id=${event.id}`}
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#0e1738] dark:bg-zinc-100 text-white dark:text-[#0e1738] text-xs font-semibold hover:bg-[#1a254d] transition-colors"
             >
               <span>Lihat Sertifikat</span>

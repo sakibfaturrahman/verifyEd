@@ -1,15 +1,31 @@
-// src/features/events/components/user-event-form-modal.tsx
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, CalendarDays, MapPin, FileText, Save } from "lucide-react";
-import { EventItem } from "../../hooks/use-admin-events";
+import {
+  X,
+  CalendarDays,
+  MapPin,
+  FileText,
+  Save,
+  Building2,
+  Loader2,
+} from "lucide-react";
+import { UserEventItem } from "../../hooks/use-user-events";
+import { useAuthStore } from "@/stores/auth-store";
 
 interface UserEventFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: Partial<EventItem>) => void;
-  initialData?: EventItem | null;
+  onSubmit: (data: {
+    name: string;
+    organizer: string;
+    event_date: string;
+    location: string;
+    description: string;
+    status: "draft" | "ongoing" | "completed";
+  }) => void;
+  initialData?: UserEventItem | null;
+  isSubmitting?: boolean;
 }
 
 export function UserEventFormModal({
@@ -17,8 +33,11 @@ export function UserEventFormModal({
   onClose,
   onSubmit,
   initialData,
+  isSubmitting = false,
 }: UserEventFormModalProps) {
+  const user = useAuthStore((state) => state.user);
   const [name, setName] = useState("");
+  const [organizer, setOrganizer] = useState("");
   const [eventDate, setEventDate] = useState("");
   const [location, setLocation] = useState("");
   const [description, setDescription] = useState("");
@@ -29,18 +48,23 @@ export function UserEventFormModal({
   useEffect(() => {
     if (initialData) {
       setName(initialData.name);
-      setEventDate(initialData.eventDate);
-      setLocation(initialData.location);
-      setDescription(initialData.description);
+      setOrganizer(initialData.organizer || user?.name || "");
+      // Ambil format YYYY-MM-DD
+      setEventDate(
+        initialData.event_date ? initialData.event_date.split("T")[0] : "",
+      );
+      setLocation(initialData.location || "");
+      setDescription(initialData.description || "");
       setStatus(initialData.status);
     } else {
       setName("");
-      setEventDate("");
+      setOrganizer(user?.name || "Universitas Perjuangan");
+      setEventDate(new Date().toISOString().split("T")[0]);
       setLocation("");
       setDescription("");
       setStatus("ongoing");
     }
-  }, [initialData, isOpen]);
+  }, [initialData, isOpen, user]);
 
   if (!isOpen) return null;
 
@@ -48,7 +72,8 @@ export function UserEventFormModal({
     e.preventDefault();
     onSubmit({
       name,
-      eventDate,
+      organizer,
+      event_date: eventDate,
       location,
       description,
       status,
@@ -86,6 +111,21 @@ export function UserEventFormModal({
             />
           </div>
 
+          <div className="space-y-1.5">
+            <label className="font-bold text-slate-700 dark:text-zinc-200 flex items-center gap-1">
+              <Building2 size={13} className="text-slate-400" />
+              <span>Instansi / Lembaga Penyelenggara</span>
+            </label>
+            <input
+              type="text"
+              required
+              value={organizer}
+              onChange={(e) => setOrganizer(e.target.value)}
+              placeholder="Contoh: Universitas Perjuangan"
+              className="w-full bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-700 rounded-xl px-3.5 py-2.5 font-medium text-slate-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-[#0e1738]/15"
+            />
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <label className="font-bold text-slate-700 dark:text-zinc-200 flex items-center gap-1">
@@ -107,7 +147,9 @@ export function UserEventFormModal({
               </label>
               <select
                 value={status}
-                onChange={(e) => setStatus(e.target.value as any)}
+                onChange={(e) =>
+                  setStatus(e.target.value as "draft" | "ongoing" | "completed")
+                }
                 className="w-full bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-700 rounded-xl px-3.5 py-2.5 font-medium text-slate-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-[#0e1738]/15"
               >
                 <option value="ongoing">Berlangsung</option>
@@ -124,10 +166,9 @@ export function UserEventFormModal({
             </label>
             <input
               type="text"
-              required
               value={location}
               onChange={(e) => setLocation(e.target.value)}
-              placeholder="Contoh: Gedung Auditorium Kampus / Daring (Zoom)"
+              placeholder="Contoh: Gedung Auditorium / Daring (Zoom)"
               className="w-full bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-700 rounded-xl px-3.5 py-2.5 font-medium text-slate-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-[#0e1738]/15"
             />
           </div>
@@ -149,16 +190,22 @@ export function UserEventFormModal({
           <div className="pt-2 flex justify-end gap-2 border-t border-slate-100 dark:border-zinc-800">
             <button
               type="button"
+              disabled={isSubmitting}
               onClick={onClose}
-              className="px-4 py-2 rounded-xl border border-slate-200 dark:border-zinc-700 text-slate-600 dark:text-zinc-300 font-semibold hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+              className="px-4 py-2 rounded-xl border border-slate-200 dark:border-zinc-700 text-slate-600 dark:text-zinc-300 font-semibold hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer disabled:opacity-50"
             >
               Batal
             </button>
             <button
               type="submit"
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#0e1738] dark:bg-zinc-100 text-white dark:text-[#0e1738] font-semibold hover:bg-[#1a254d] transition-all shadow-xs cursor-pointer"
+              disabled={isSubmitting}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#0e1738] dark:bg-zinc-100 text-white dark:text-[#0e1738] font-semibold hover:bg-[#1a254d] transition-all shadow-xs cursor-pointer disabled:opacity-50"
             >
-              <Save size={14} />
+              {isSubmitting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save size={14} />
+              )}
               <span>{initialData ? "Simpan Perubahan" : "Simpan Agenda"}</span>
             </button>
           </div>

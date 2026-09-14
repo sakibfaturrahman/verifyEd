@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
 import { AxiosError } from "axios";
@@ -61,7 +60,11 @@ export function useAdminEventsListQuery(params: EventQueryParams) {
 export function useDeleteEventMutation() {
   const queryClient = useQueryClient();
 
-  return useMutation<{ success: boolean; message: string }, AxiosError<{ message: string }>, string>({
+  return useMutation<
+    { success: boolean; message: string },
+    AxiosError<{ message: string }>,
+    string
+  >({
     mutationFn: async (eventId: string) => {
       const res = await apiClient.delete(`/events/${eventId}`);
       return res.data;
