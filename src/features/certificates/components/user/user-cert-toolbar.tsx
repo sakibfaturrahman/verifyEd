@@ -1,4 +1,3 @@
-// src/features/certificates/components/user-cert-toolbar.tsx
 "use client";
 
 import Link from "next/link";
@@ -32,13 +31,13 @@ export function UserCertToolbar({
           type="text"
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
-          placeholder="Cari ID unik, nama penerima, atau agenda acara..."
+          placeholder="Cari nomor seri, nama penerima..."
           className="w-full pl-10 pr-4 py-2 rounded-xl text-xs bg-slate-50 dark:bg-zinc-800/60 border border-slate-200 dark:border-zinc-700 text-slate-800 dark:text-zinc-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0e1738]/15 dark:focus:ring-white/10 font-medium"
         />
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
-        {/* Bulk Action Controls */}
+        {/* Bulk Actions Capsule */}
         {selectedCount > 0 && (
           <div className="flex items-center gap-2 bg-slate-100 dark:bg-zinc-800 px-3 py-1 rounded-xl border border-slate-200 dark:border-zinc-700 animate-in fade-in">
             <span className="text-xs font-bold text-[#0e1738] dark:text-zinc-200">
@@ -48,23 +47,23 @@ export function UserCertToolbar({
             <button
               type="button"
               onClick={onBulkDownload}
-              className="inline-flex items-center gap-1 text-xs font-semibold text-slate-700 dark:text-zinc-300 hover:text-black dark:hover:text-white px-2 py-0.5 rounded transition-colors"
+              className="inline-flex items-center gap-1 text-xs font-semibold text-slate-700 dark:text-zinc-300 hover:text-black dark:hover:text-white px-2 py-0.5 rounded transition-colors cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" />
-              <span>Unduh ZIP</span>
+              <span>Unduh Terpilih</span>
             </button>
             <button
               type="button"
               onClick={onOpenBulkRevoke}
-              className="inline-flex items-center gap-1 text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 px-2 py-0.5 rounded transition-colors"
+              className="inline-flex items-center gap-1 text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 px-2 py-0.5 rounded transition-colors cursor-pointer"
             >
               <ShieldAlert className="w-3.5 h-3.5" />
-              <span>Cabut Massal</span>
+              <span>Cabut Kredensial</span>
             </button>
           </div>
         )}
 
-        {/* Filter Segmented Status */}
+        {/* Segmented Filter Status */}
         <div className="flex items-center gap-2">
           <span className="text-xs font-semibold text-slate-400">Status:</span>
           <div className="flex gap-1 bg-slate-100 dark:bg-zinc-800 p-1 rounded-xl">
@@ -79,7 +78,7 @@ export function UserCertToolbar({
                   key={key}
                   type="button"
                   onClick={() => onStatusFilterChange(key)}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                     statusFilter === key
                       ? "bg-white dark:bg-zinc-900 text-[#0e1738] dark:text-white shadow-xs"
                       : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
@@ -95,7 +94,7 @@ export function UserCertToolbar({
         {/* Tombol Terbitkan Dokumen Baru */}
         <Link
           href="/user/certificates/upload"
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#0e1738] dark:bg-zinc-100 text-white dark:text-[#0e1738] text-xs font-semibold hover:bg-[#1a254d] transition-all shadow-xs"
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#122253] hover:bg-[#0e1738] text-white text-xs font-semibold transition-all shadow-xs"
         >
           <Plus className="w-3.5 h-3.5" />
           <span>Terbitkan Baru</span>
