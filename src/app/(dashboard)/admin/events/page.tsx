@@ -2,7 +2,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { toast } from "sonner";
 import { AppSidebar } from "@/components/layouts/dashboard/app-sidebar";
 import { AppTopNav } from "@/components/layouts/dashboard/app-topnav";
@@ -150,12 +149,6 @@ export default function AdminEventsPage() {
             onStatusFilterChange={(val) => {
               setStatusFilter(val);
               setPage(1);
-            }}
-            onOpenCreateModal={() => {
-              toast.info("Tambah Agenda", {
-                description:
-                  "Silakan gunakan portal admin untuk pendaftaran event baru.",
-              });
             }}
           />
 

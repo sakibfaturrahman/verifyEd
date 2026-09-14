@@ -8,7 +8,7 @@ import { AdminTopNav } from "@/components/layouts/admin/admin-topnav";
 import { UserCertToolbar } from "@/features/certificates/components/user/user-cert-toolbar";
 import { UserCertDetailModal } from "@/features/certificates/components/user/user-cert-detail-modal";
 import { CertRevokeModal } from "@/features/certificates/components/admin/cert-revoke-modal";
-import { CertificateItem } from "@/features/certificates/types/cert.types";
+import { CertificateItem } from "@/features/certificates/hooks/use-admin-certificates";
 import {
   CheckCircle2,
   XCircle,

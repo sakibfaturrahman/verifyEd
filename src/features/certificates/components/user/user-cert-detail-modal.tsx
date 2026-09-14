@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { ShieldCheck, ExternalLink, Download, RotateCw, X } from "lucide-react";
-import { CertificateItem } from "../../types/cert.types";
+import { CertificateItem } from "../../hooks/use-admin-certificates";
 
 interface UserCertDetailModalProps {
   cert: CertificateItem | null;
