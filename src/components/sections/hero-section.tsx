@@ -1,9 +1,10 @@
-// src/features/verification/components/hero-section.tsx
+// src/components/sections/hero-section.tsx
 "use client";
 
 import { useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { toast } from "sonner";
 import { gsap } from "@/lib/gsap";
 import { useGSAP } from "@gsap/react";
 import {
@@ -12,12 +13,34 @@ import {
   QrCode,
   FileCheck2,
   ArrowRight,
+  Loader2,
+  UploadCloud,
 } from "lucide-react";
+import {
+  useVerifyByNumberMutation,
+  useVerifyByQrTokenMutation,
+  useVerifyByPdfMutation,
+  VerificationResult,
+} from "@/features/verification/hooks/use-verification";
+import { VerificationResultModal } from "@/features/verification/components/verification-result-modal";
 
 export function HeroSection() {
   const container = useRef<HTMLDivElement>(null);
+  const pdfInputRef = useRef<HTMLInputElement>(null);
+
   const [certId, setCertId] = useState("");
+  const [qrInput, setQrInput] = useState("");
   const [activeTab, setActiveTab] = useState<"id" | "qr" | "pdf">("id");
+  const [verificationResult, setVerificationResult] =
+    useState<VerificationResult | null>(null);
+
+  // Mutasi Backend
+  const verifyByNumber = useVerifyByNumberMutation();
+  const verifyByQr = useVerifyByQrTokenMutation();
+  const verifyByPdf = useVerifyByPdfMutation();
+
+  const isVerifying =
+    verifyByNumber.isPending || verifyByQr.isPending || verifyByPdf.isPending;
 
   useGSAP(
     () => {
@@ -82,12 +105,90 @@ export function HeroSection() {
     { scope: container },
   );
 
+  // 1. Handler Cek ID Sertifikat
+  const handleVerifyById = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!certId.trim()) {
+      toast.error("Input Kosong", {
+        description: "Masukkan nomor sertifikat resmi.",
+      });
+      return;
+    }
+
+    verifyByNumber.mutate(certId.trim(), {
+      onSuccess: (data) => {
+        setVerificationResult(data);
+      },
+      onError: (err) => {
+        toast.error("Gagal Memverifikasi", {
+          description: err.response?.data?.message || "Server tidak merespons.",
+        });
+      },
+    });
+  };
+
+  // 2. Handler Cek QR Token (Bisa menerima raw token atau URL penuh dari scan)
+  const handleVerifyByQr = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!qrInput.trim()) {
+      toast.error("Token Kosong", {
+        description: "Masukkan token QR atau URL pemindaian barcode.",
+      });
+      return;
+    }
+
+    // Ekstrak token jika input berupa full URL (misal: https://verifyed.id/verify/qr/tok_xxx)
+    let extractedToken = qrInput.trim();
+    if (extractedToken.includes("/qr/")) {
+      extractedToken = extractedToken.split("/qr/").pop() || extractedToken;
+    } else if (extractedToken.includes("/verify/")) {
+      extractedToken = extractedToken.split("/verify/").pop() || extractedToken;
+    }
+
+    verifyByQr.mutate(extractedToken, {
+      onSuccess: (data) => {
+        setVerificationResult(data);
+      },
+      onError: (err) => {
+        toast.error("Validasi QR Gagal", {
+          description: err.response?.data?.message || "Token tidak valid.",
+        });
+      },
+    });
+  };
+
+  // 3. Handler Cek File PDF Asli
+  const handlePdfUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.type !== "application/pdf" && !file.name.endsWith(".pdf")) {
+      toast.error("Format Berkas Salah", {
+        description: "Hanya dokumen PDF yang dapat diuji integritasnya.",
+      });
+      return;
+    }
+
+    verifyByPdf.mutate(file, {
+      onSuccess: (data) => {
+        setVerificationResult(data);
+        if (pdfInputRef.current) pdfInputRef.current.value = "";
+      },
+      onError: (err) => {
+        toast.error("Gagal Memeriksa Berkas", {
+          description:
+            err.response?.data?.message || "Berkas tidak dapat diproses.",
+        });
+        if (pdfInputRef.current) pdfInputRef.current.value = "";
+      },
+    });
+  };
+
   return (
     <section
       ref={container}
       className="relative w-full p-2 sm:p-3 md:p-4 bg-[#faf8f5] overflow-visible"
     >
-      {/* Canvas Periwinkle: ubah ke overflow-visible agar card bisa overlap ke bawah */}
       <div className="relative w-full bg-[#94b5ff] text-[#0e1738] rounded-[32px] sm:rounded-[40px] md:rounded-[48px] pt-28 sm:pt-36 md:pt-40 pb-16 sm:pb-20 px-6 sm:px-12 md:px-16 overflow-visible flex flex-col justify-between shadow-xs">
         <div className="max-w-7xl mx-auto w-full">
           {/* Top Content: Headline & Deskripsi */}
@@ -206,7 +307,7 @@ export function HeroSection() {
             </div>
           </div>
 
-          {/* Quick Verification Dock: Overlapping dengan margin negatif ke bawah */}
+          {/* Quick Verification Dock */}
           <div
             id="verification-portal"
             className="mt-12 sm:mt-16 -mb-20 sm:-mb-24 relative z-30 max-w-2xl mx-auto px-2 sm:px-0"
@@ -217,7 +318,7 @@ export function HeroSection() {
                   <button
                     type="button"
                     onClick={() => setActiveTab("id")}
-                    className={`px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all ${
+                    className={`px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                       activeTab === "id"
                         ? "bg-[#0e1738] text-white shadow-sm"
                         : "text-slate-600 hover:text-black"
@@ -228,7 +329,7 @@ export function HeroSection() {
                   <button
                     type="button"
                     onClick={() => setActiveTab("qr")}
-                    className={`px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all ${
+                    className={`px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                       activeTab === "qr"
                         ? "bg-[#0e1738] text-white shadow-sm"
                         : "text-slate-600 hover:text-black"
@@ -239,7 +340,7 @@ export function HeroSection() {
                   <button
                     type="button"
                     onClick={() => setActiveTab("pdf")}
-                    className={`px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all ${
+                    className={`px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                       activeTab === "pdf"
                         ? "bg-[#0e1738] text-white shadow-sm"
                         : "text-slate-600 hover:text-black"
@@ -251,59 +352,126 @@ export function HeroSection() {
 
                 <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-100/90 px-3 py-1 rounded-full">
                   <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>Portal Siaga</span>
+                  <span>Portal Publik Siaga</span>
                 </div>
               </div>
 
+              {/* TAB 1: ID Sertifikat */}
               {activeTab === "id" && (
-                <div className="flex flex-col sm:flex-row gap-2.5">
+                <form
+                  onSubmit={handleVerifyById}
+                  className="flex flex-col sm:flex-row gap-2.5"
+                >
                   <div className="relative flex-1">
                     <input
                       type="text"
                       value={certId}
                       onChange={(e) => setCertId(e.target.value)}
-                      placeholder="Masukkan Certificate ID (e.g. CERT-2026-XXXX)"
+                      placeholder="Masukkan Certificate Number (e.g. CERT-2026-XXXX)"
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-xs sm:text-sm font-mono font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0e1738]/20 focus:border-[#0e1738] transition-all"
                     />
                     <Search className="w-4 h-4 text-slate-400 absolute right-3.5 top-4" />
                   </div>
                   <button
-                    type="button"
-                    className="px-6 py-3.5 rounded-xl bg-[#0e1738] text-white text-xs sm:text-sm font-bold hover:bg-[#1a254d] transition-all flex items-center justify-center gap-2 shrink-0 shadow-md shadow-[#0e1738]/10 active:scale-95"
+                    type="submit"
+                    disabled={isVerifying}
+                    className="px-6 py-3.5 rounded-xl bg-[#0e1738] text-white text-xs sm:text-sm font-bold hover:bg-[#1a254d] transition-all flex items-center justify-center gap-2 shrink-0 shadow-md shadow-[#0e1738]/10 active:scale-95 disabled:opacity-50 cursor-pointer"
                   >
-                    <span>Cek Validitas</span>
-                    <ArrowRight className="w-4 h-4" />
+                    {isVerifying ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <>
+                        <span>Cek Validitas</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </>
+                    )}
                   </button>
-                </div>
+                </form>
               )}
 
+              {/* TAB 2: Token / URL Barcode QR */}
               {activeTab === "qr" && (
-                <div className="p-8 text-center border-2 border-dashed border-slate-200 rounded-2xl cursor-pointer hover:border-slate-400 transition-colors bg-slate-50/80">
-                  <QrCode className="w-7 h-7 mx-auto text-[#0e1738] mb-2" />
-                  <span className="text-xs sm:text-sm font-bold text-slate-800 block">
-                    Arahkan Kamera atau Unggah File QR
+                <form onSubmit={handleVerifyByQr} className="space-y-3">
+                  <div className="flex flex-col sm:flex-row gap-2.5">
+                    <div className="relative flex-1">
+                      <input
+                        type="text"
+                        value={qrInput}
+                        onChange={(e) => setQrInput(e.target.value)}
+                        placeholder="Tempel token QR atau tautan scan barcode..."
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-xs sm:text-sm font-mono font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0e1738]/20 focus:border-[#0e1738] transition-all"
+                      />
+                      <QrCode className="w-4 h-4 text-slate-400 absolute right-3.5 top-4" />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={isVerifying}
+                      className="px-6 py-3.5 rounded-xl bg-[#0e1738] text-white text-xs sm:text-sm font-bold hover:bg-[#1a254d] transition-all flex items-center justify-center gap-2 shrink-0 shadow-md shadow-[#0e1738]/10 active:scale-95 disabled:opacity-50 cursor-pointer"
+                    >
+                      {isVerifying ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <>
+                          <span>Periksa Token</span>
+                          <ArrowRight className="w-4 h-4" />
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <span className="text-[11px] text-slate-400 block px-1">
+                    Tip: Masukkan kode token 32-karakter unik yang tertera pada
+                    stempel dokumen.
                   </span>
-                  <span className="text-[11px] text-slate-500 mt-0.5 block">
-                    Sistem mendeteksi token terenkripsi dari barcode
-                  </span>
-                </div>
+                </form>
               )}
 
+              {/* TAB 3: Unggah Berkas PDF (Checksum SHA-256) */}
               {activeTab === "pdf" && (
-                <div className="p-8 text-center border-2 border-dashed border-slate-200 rounded-2xl cursor-pointer hover:border-slate-400 transition-colors bg-slate-50/80">
-                  <FileCheck2 className="w-7 h-7 mx-auto text-[#0e1738] mb-2" />
-                  <span className="text-xs sm:text-sm font-bold text-slate-800 block">
-                    Pilih Berkas PDF Asli untuk Uji Checksum
-                  </span>
-                  <span className="text-[11px] text-slate-500 mt-0.5 block">
-                    Validasi integritas berkas secara aman langsung di browser
-                  </span>
+                <div>
+                  <input
+                    ref={pdfInputRef}
+                    type="file"
+                    accept="application/pdf"
+                    className="hidden"
+                    onChange={handlePdfUpload}
+                  />
+
+                  <div
+                    onClick={() => !isVerifying && pdfInputRef.current?.click()}
+                    className="p-7 text-center border-2 border-dashed border-slate-200 rounded-2xl cursor-pointer hover:border-[#0e1738] hover:bg-slate-50 transition-colors bg-slate-50/80"
+                  >
+                    {isVerifying ? (
+                      <div className="flex flex-col items-center justify-center py-2 gap-2">
+                        <Loader2 className="w-7 h-7 text-[#0e1738] animate-spin" />
+                        <span className="text-xs font-bold text-slate-700">
+                          Mengomputasi Checksum SHA-256 & Memverifikasi...
+                        </span>
+                      </div>
+                    ) : (
+                      <>
+                        <FileCheck2 className="w-7 h-7 mx-auto text-[#0e1738] mb-2" />
+                        <span className="text-xs sm:text-sm font-bold text-slate-800 block">
+                          Pilih Berkas PDF Asli untuk Uji Checksum
+                        </span>
+                        <span className="text-[11px] text-slate-500 mt-0.5 block">
+                          Sistem akan memverifikasi hash biner file langsung ke
+                          ledger VerifyEd
+                        </span>
+                      </>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
           </div>
         </div>
       </div>
+
+      {/* Modal Dialog Hasil Verifikasi */}
+      <VerificationResultModal
+        result={verificationResult}
+        onClose={() => setVerificationResult(null)}
+      />
     </section>
   );
 }

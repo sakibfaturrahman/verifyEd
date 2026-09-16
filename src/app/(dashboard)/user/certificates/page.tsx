@@ -84,21 +84,32 @@ export default function UserCertificatesPage() {
   const handleDownloadSingle = async (certId: string, certNumber: string) => {
     try {
       setDownloadingId(certId);
+      toast.loading("Mempersiapkan tautan unduhan...", { id: `dl-${certId}` });
+
       const url = await fetchUserCertDownloadUrl(certId);
-      if (!url) throw new Error("URL unduhan kosong.");
-      window.open(url, "_blank");
-      toast.success("Mempersiapkan Berkas", {
-        description: `File sertifikat ${certNumber}.pdf berhasil dibuka.`,
+      if (!url) throw new Error("URL berkas tidak ditemukan.");
+
+      // Gunakan tag anchor tersembunyi untuk unduhan langsung tanpa blokir popup
+      const link = document.createElement("a");
+      link.href = url;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.download = `${certNumber}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast.success("Unduhan Berhasil", {
+        id: `dl-${certId}`,
+        description: `Dokumen ${certNumber}.pdf berhasil diunduh.`,
       });
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { message?: string } } };
-      const backendMessage = axiosErr.response?.data?.message;
-
-      console.error("❌ DOWNLOAD ERROR DETAIL:", err);
-
-      toast.error("Gagal Memuat Berkas", {
+      toast.error("Gagal Mengunduh", {
+        id: `dl-${certId}`,
         description:
-          backendMessage || "Gagal membuat tautan unduhan dari penyimpanan.",
+          axiosErr.response?.data?.message ||
+          "Berkas masih dalam proses finalisasi penyimpanan. Silakan klik kembali.",
       });
     } finally {
       setDownloadingId(null);
