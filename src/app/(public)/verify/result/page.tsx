@@ -21,6 +21,8 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useVerificationStore } from "@/features/verification/stores/verification-store";
+import { PublicNavbar } from "@/components/layouts/public-navbar";
+import { PublicFooter } from "@/components/layouts/public-footer";
 
 export default function VerificationResultPage() {
   const router = useRouter();
@@ -90,9 +92,10 @@ export default function VerificationResultPage() {
   return (
     <main className="min-h-screen bg-[#faf8f5] dark:bg-zinc-950 text-slate-900 dark:text-zinc-100 p-3 sm:p-6 md:p-10 selection:bg-[#0e1738] selection:text-white relative overflow-hidden">
       {/* Pendar Cahaya Lembut Latar Belakang */}
+      <PublicNavbar />
       <div className="pointer-events-none absolute top-12 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-[#94b5ff]/20 dark:bg-indigo-950/20 blur-[140px] rounded-full -z-10" />
 
-      <div className="max-w-4xl mx-auto space-y-6 sm:space-y-8">
+      <div className="max-w-4xl mx-auto space-y-6 sm:space-y-8 margin-top-20px">
         {/* Navigasi Atas */}
         <div className="flex items-center justify-between pt-2">
           <Link
@@ -378,6 +381,7 @@ export default function VerificationResultPage() {
           </div>
         )}
       </div>
+      <PublicFooter />
     </main>
   );
 }

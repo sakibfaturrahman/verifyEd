@@ -1,4 +1,4 @@
-// src/app/(dashboard)/user/certificates/upload/page.tsx
+
 "use client";
 
 import { useState, useRef } from "react";
@@ -12,13 +12,16 @@ import { UploadHeaderBanner } from "@/features/issuance/components/upload-header
 import { EventPickerCard } from "@/features/issuance/components/event-picker-card";
 import { SingleUploadCard } from "@/features/issuance/components/single-upload-card";
 import { BulkUploadWorkspace } from "@/features/issuance/components/bulk-upload-workspace";
-import { apiClient } from "@/lib/api-client";
-import { ArrowRight, Loader2 } from "lucide-react";
+import { useUploadSessionStore } from "@/features/issuance/stores/upload-session-store";
+import { ArrowRight } from "lucide-react";
 
 export default function CertificateUploadPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Store sesi untuk melanjutkan ke penempatan QR
+  const setSessionData = useUploadSessionStore((state) => state.setSessionData);
 
   // Query Agenda Acara
   const { data: eventsData, isPending: isEventsLoading } =
@@ -31,7 +34,6 @@ export default function CertificateUploadPage() {
   const [uploadType, setUploadType] = useState<"single" | "bulk">("single");
   const [files, setFiles] = useState<File[]>([]);
   const [recipientNames, setRecipientNames] = useState<string[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const cleanFileNameToName = (fileName: string): string => {
     return fileName
@@ -75,7 +77,8 @@ export default function CertificateUploadPage() {
     }
   };
 
-  const handleSubmitUpload = async () => {
+  // Navigasi ke halaman penempatan stempel QR
+  const handleProceedToQrPlacement = () => {
     if (!selectedEventId) {
       toast.error("Agenda Acara Belum Dipilih", {
         description: "Silakan tentukan agenda kegiatan terlebih dahulu.",
@@ -98,57 +101,16 @@ export default function CertificateUploadPage() {
       return;
     }
 
-    setIsSubmitting(true);
-    const toastId = toast.loading(
-      "Mengunggah dan memproses dokumen sertifikat...",
-    );
+    // Simpan file & data form ke store sesi
+    setSessionData({
+      eventId: selectedEventId,
+      uploadType,
+      files,
+      recipientNames,
+    });
 
-    try {
-      if (uploadType === "single") {
-        const formData = new FormData();
-        formData.append("event_id", selectedEventId);
-        formData.append("recipient_name", recipientNames[0].trim());
-        formData.append("file", files[0]);
-
-        await apiClient.post("/certificates/upload", formData, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
-
-        toast.success("Dokumen Berhasil Diterbitkan", {
-          id: toastId,
-          description:
-            "1 sertifikat resmi telah tersimpan dan siap diverifikasi.",
-        });
-      } else {
-        const formData = new FormData();
-        formData.append("event_id", selectedEventId);
-        formData.append("recipient_names", JSON.stringify(recipientNames));
-        files.forEach((file) => {
-          formData.append("files", file);
-        });
-
-        await apiClient.post("/certificates/upload/bulk", formData, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
-
-        toast.success("Penerbitan Massal Berhasil", {
-          id: toastId,
-          description: `${files.length} sertifikat telah berhasil diunggah.`,
-        });
-      }
-
-      router.push("/user/certificates");
-    } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { message?: string } } };
-      toast.error("Gagal Memproses Berkas", {
-        id: toastId,
-        description:
-          axiosErr.response?.data?.message ||
-          "Terjadi kendala saat menyimpan berkas ke repositori.",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
+    // Pindah ke halaman preview PDF & penempatan QR presisi
+    router.push("/user/certificates/qr-placement");
   };
 
   return (
@@ -247,21 +209,12 @@ export default function CertificateUploadPage() {
 
                   <button
                     type="button"
-                    disabled={files.length === 0 || isSubmitting}
-                    onClick={handleSubmitUpload}
+                    disabled={files.length === 0}
+                    onClick={handleProceedToQrPlacement}
                     className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3 rounded-2xl bg-[#122253] text-white text-xs font-bold hover:bg-[#0e1738] transition-all shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                   >
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 size={15} className="animate-spin" />
-                        <span>Memproses Dokumen...</span>
-                      </>
-                    ) : (
-                      <>
-                        <span>Terbitkan Sertifikat ({files.length})</span>
-                        <ArrowRight size={15} />
-                      </>
-                    )}
+                    <span>Lanjut Atur Posisi QR ({files.length})</span>
+                    <ArrowRight size={15} />
                   </button>
                 </div>
               </div>

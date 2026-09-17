@@ -3,13 +3,13 @@
 import { useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { gsap } from "@/lib/gsap";
 import { useGSAP } from "@gsap/react";
 import {
   Search,
   CheckCircle2,
+  QrCode,
   FileCheck2,
   ArrowRight,
   Loader2,
@@ -19,12 +19,12 @@ import {
   useVerifyByNumberMutation,
   useVerifyByQrTokenMutation,
   useVerifyByPdfMutation,
+  VerificationResult,
 } from "@/features/verification/hooks/use-verification";
 import { QrCameraScanner } from "@/features/verification/components/qr-camera-scanner";
-import { useVerificationStore } from "@/features/verification/stores/verification-store";
+import { InlineVerificationResult } from "@/features/verification/components/inline-verification-result";
 
 export function HeroSection() {
-  const router = useRouter();
   const container = useRef<HTMLDivElement>(null);
   const pdfInputRef = useRef<HTMLInputElement>(null);
 
@@ -33,9 +33,11 @@ export function HeroSection() {
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [isDraggingPdf, setIsDraggingPdf] = useState(false);
 
-  const setVerificationResult = useVerificationStore(
-    (state) => state.setVerificationResult,
+  // State Hasil Audit In-Place
+  const [auditResult, setAuditResult] = useState<VerificationResult | null>(
+    null,
   );
+  const [scannedMethod, setScannedMethod] = useState<"id" | "qr" | "pdf">("id");
 
   const verifyByNumber = useVerifyByNumberMutation();
   const verifyByQr = useVerifyByQrTokenMutation();
@@ -81,15 +83,15 @@ export function HeroSection() {
     { scope: container },
   );
 
-  // 1. Eksekusi Pencarian Nomor Seri
+  // 1. Eksekusi Cek Nomor Seri
   const handleVerifyById = (e: React.FormEvent) => {
     e.preventDefault();
     if (!certId.trim()) return;
 
     verifyByNumber.mutate(certId.trim(), {
       onSuccess: (data) => {
-        setVerificationResult(data, "id");
-        router.push("/verify/result");
+        setScannedMethod("id");
+        setAuditResult(data);
       },
       onError: (err) => {
         toast.error("Gagal Memverifikasi", {
@@ -99,7 +101,7 @@ export function HeroSection() {
     });
   };
 
-  // 2. Eksekusi Pemindaian Kamera QR
+  // 2. Eksekusi Scan Kamera QR
   const handleQrDetected = (decodedText: string) => {
     setIsCameraActive(false);
 
@@ -110,13 +112,13 @@ export function HeroSection() {
       token = token.split("/verify/").pop() || token;
     }
 
-    toast.loading("Menganalisis token dokumen...", { id: "qr-scan" });
+    toast.loading("Menganalisis kode token...", { id: "qr-scan" });
 
     verifyByQr.mutate(token, {
       onSuccess: (data) => {
         toast.dismiss("qr-scan");
-        setVerificationResult(data, "qr");
-        router.push("/verify/result");
+        setScannedMethod("qr");
+        setAuditResult(data);
       },
       onError: () => {
         toast.error("Kode QR Tidak Valid", {
@@ -127,7 +129,7 @@ export function HeroSection() {
     });
   };
 
-  // 3. Auto-Scan Berkas PDF
+  // 3. Auto-Scan PDF (Drag & Drop / File Pick)
   const executePdfAutoScan = (file: File) => {
     if (file.type !== "application/pdf" && !file.name.endsWith(".pdf")) {
       toast.error("Format Berkas Salah", {
@@ -142,8 +144,9 @@ export function HeroSection() {
     verifyByPdf.mutate(file, {
       onSuccess: (data) => {
         toast.dismiss("pdf-scan");
-        setVerificationResult(data, "pdf");
-        router.push("/verify/result");
+        setScannedMethod("pdf");
+        setAuditResult(data);
+        if (pdfInputRef.current) pdfInputRef.current.value = "";
       },
       onError: (err) => {
         toast.error("Pemeriksaan Gagal", {
@@ -151,6 +154,7 @@ export function HeroSection() {
           description:
             err.response?.data?.message || "Berkas tidak dapat diproses.",
         });
+        if (pdfInputRef.current) pdfInputRef.current.value = "";
       },
     });
   };
@@ -179,7 +183,7 @@ export function HeroSection() {
                   Coba Verifikasi Gratis
                 </Link>
                 <span className="text-xs sm:text-sm font-semibold text-[#0e1738]/85">
-                  Akses audit publik tanpa perlu login
+                  Akses publik tanpa perlu login
                 </span>
               </div>
             </div>
@@ -275,14 +279,15 @@ export function HeroSection() {
             </div>
           </div>
 
-          {/* Quick Verification Portal */}
+          {/* Quick Verification Portal Dock */}
           <div
             id="verification-portal"
-            className="mt-12 sm:mt-16 -mb-20 sm:-mb-24 relative z-30 max-w-2xl mx-auto px-2 sm:px-0"
+            className="mt-12 sm:mt-16 -mb-20 sm:-mb-24 relative z-30 max-w-3xl mx-auto px-2 sm:px-0"
           >
-            <div className="bg-white/95 backdrop-blur-xl rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl shadow-[#0e1738]/15 border border-white/90">
-              <div className="flex items-center justify-between gap-2 pb-3 mb-4 border-b border-slate-100">
-                <div className="flex gap-1.5 p-1 bg-slate-100/80 rounded-xl">
+            <div className="bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl shadow-[#0e1738]/15 border border-white/90 dark:border-zinc-800">
+              {/* Tab Selector */}
+              <div className="flex items-center justify-between gap-2 pb-3 mb-4 border-b border-slate-100 dark:border-zinc-800">
+                <div className="flex gap-1.5 p-1 bg-slate-100/80 dark:bg-zinc-800 rounded-xl">
                   <button
                     type="button"
                     onClick={() => {
@@ -291,8 +296,8 @@ export function HeroSection() {
                     }}
                     className={`px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                       activeTab === "id"
-                        ? "bg-[#0e1738] text-white shadow-sm"
-                        : "text-slate-600 hover:text-black"
+                        ? "bg-[#0e1738] dark:bg-zinc-100 text-white dark:text-[#0e1738] shadow-sm"
+                        : "text-slate-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
                     }`}
                   >
                     Nomor ID
@@ -302,8 +307,8 @@ export function HeroSection() {
                     onClick={() => setActiveTab("qr")}
                     className={`px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                       activeTab === "qr"
-                        ? "bg-[#0e1738] text-white shadow-sm"
-                        : "text-slate-600 hover:text-black"
+                        ? "bg-[#0e1738] dark:bg-zinc-100 text-white dark:text-[#0e1738] shadow-sm"
+                        : "text-slate-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
                     }`}
                   >
                     Scan QR
@@ -316,17 +321,17 @@ export function HeroSection() {
                     }}
                     className={`px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition-all cursor-pointer ${
                       activeTab === "pdf"
-                        ? "bg-[#0e1738] text-white shadow-sm"
-                        : "text-slate-600 hover:text-black"
+                        ? "bg-[#0e1738] dark:bg-zinc-100 text-white dark:text-[#0e1738] shadow-sm"
+                        : "text-slate-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
                     }`}
                   >
                     Auto-Scan PDF
                   </button>
                 </div>
 
-                <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-100/90 px-3 py-1 rounded-full">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-100/90 dark:bg-emerald-950/60 px-3 py-1 rounded-full">
                   <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>Siaga Audit</span>
+                  <span className="hidden sm:inline">Siaga Verifikasi</span>
                 </div>
               </div>
 
@@ -342,14 +347,14 @@ export function HeroSection() {
                       value={certId}
                       onChange={(e) => setCertId(e.target.value)}
                       placeholder="Masukkan Nomor Seri (e.g. CERT-2026-XXXX)"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3.5 text-xs sm:text-sm font-mono font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0e1738]/20 focus:border-[#0e1738] transition-all"
+                      className="w-full bg-slate-50 dark:bg-zinc-800/80 border border-slate-200 dark:border-zinc-700 rounded-xl px-4 py-3.5 text-xs sm:text-sm font-mono font-bold text-slate-900 dark:text-zinc-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0e1738]/20 focus:border-[#0e1738] transition-all"
                     />
                     <Search className="w-4 h-4 text-slate-400 absolute right-3.5 top-4" />
                   </div>
                   <button
                     type="submit"
                     disabled={isVerifying}
-                    className="px-6 py-3.5 rounded-xl bg-[#0e1738] text-white text-xs sm:text-sm font-bold hover:bg-[#1a254d] transition-all flex items-center justify-center gap-2 shrink-0 shadow-md shadow-[#0e1738]/10 active:scale-95 disabled:opacity-50 cursor-pointer"
+                    className="px-6 py-3.5 rounded-xl bg-[#0e1738] dark:bg-zinc-100 text-white dark:text-[#0e1738] text-xs sm:text-sm font-bold hover:bg-[#1a254d] transition-all flex items-center justify-center gap-2 shrink-0 shadow-md shadow-[#0e1738]/10 active:scale-95 disabled:opacity-50 cursor-pointer"
                   >
                     {isVerifying ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -374,16 +379,17 @@ export function HeroSection() {
                   ) : (
                     <div
                       onClick={() => setIsCameraActive(true)}
-                      className="p-8 text-center border-2 border-dashed border-slate-300 rounded-2xl cursor-pointer hover:border-[#0e1738] hover:bg-slate-50/80 transition-all bg-slate-50/50 flex flex-col items-center justify-center group"
+                      className="p-8 text-center border-2 border-dashed border-slate-300 dark:border-zinc-700 rounded-2xl cursor-pointer hover:border-[#0e1738] hover:bg-slate-50/80 dark:hover:bg-zinc-800/50 transition-all bg-slate-50/50 dark:bg-zinc-800/20 flex flex-col items-center justify-center group"
                     >
-                      <div className="w-12 h-12 rounded-2xl bg-[#0e1738] text-white flex items-center justify-center mb-3 shadow-md group-hover:scale-105 transition-transform">
+                      <div className="w-12 h-12 rounded-2xl bg-[#0e1738] dark:bg-zinc-100 text-white dark:text-[#0e1738] flex items-center justify-center mb-3 shadow-md group-hover:scale-105 transition-transform">
                         <Camera className="w-6 h-6" />
                       </div>
-                      <span className="text-xs sm:text-sm font-bold text-slate-800 block">
-                        Buka Kamera & Scan Barcode QR
+                      <span className="text-xs sm:text-sm font-bold text-slate-800 dark:text-zinc-100 block">
+                        Buka Kamera & Pindai Barcode QR
                       </span>
-                      <span className="text-[11px] text-slate-500 mt-1 block">
-                        Arahkan lensa ke kode QR untuk otentikasi seketika
+                      <span className="text-[11px] text-slate-500 dark:text-zinc-400 mt-1 block">
+                        Arahkan lensa ke kode QR untuk otentikasi seketika tanpa
+                        berpindah halaman
                       </span>
                     </div>
                   )}
@@ -420,35 +426,45 @@ export function HeroSection() {
                     className={`p-8 text-center border-2 border-dashed rounded-2xl cursor-pointer transition-all flex flex-col items-center justify-center ${
                       isDraggingPdf
                         ? "border-[#0e1738] bg-indigo-50/50 scale-[0.99]"
-                        : "border-slate-300 hover:border-[#0e1738] hover:bg-slate-50 bg-slate-50/60"
+                        : "border-slate-300 dark:border-zinc-700 hover:border-[#0e1738] hover:bg-slate-50 bg-slate-50/60 dark:bg-zinc-800/30"
                     }`}
                   >
                     {isVerifying ? (
                       <div className="flex flex-col items-center justify-center py-2 gap-2">
-                        <Loader2 className="w-8 h-8 text-[#0e1738] animate-spin" />
-                        <span className="text-xs font-bold text-slate-800">
+                        <Loader2 className="w-8 h-8 text-[#0e1738] dark:text-zinc-100 animate-spin" />
+                        <span className="text-xs font-bold text-slate-800 dark:text-zinc-100">
                           Mengomputasi Checksum SHA-256...
                         </span>
-                        <span className="text-[11px] text-slate-500">
-                          Mencocokkan fingerprint biner dokumen ke ledger resmi
+                        <span className="text-[11px] text-slate-500 dark:text-zinc-400">
+                          Mencocokkan fingerprint biner dokumen ke repositori
+                          resmi
                         </span>
                       </div>
                     ) : (
                       <>
-                        <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-[#0e1738] flex items-center justify-center mb-3">
+                        <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950 text-[#0e1738] dark:text-indigo-400 flex items-center justify-center mb-3">
                           <FileCheck2 className="w-6 h-6" />
                         </div>
-                        <span className="text-xs sm:text-sm font-bold text-slate-800 block">
+                        <span className="text-xs sm:text-sm font-bold text-slate-800 dark:text-zinc-100 block">
                           Tarik Berkas PDF ke Sini (Auto-Scan)
                         </span>
-                        <span className="text-[11px] text-slate-500 mt-1 block">
-                          Sistem langsung menguji hash biner tanpa perlu tombol
-                          submit tambahan.
+                        <span className="text-[11px] text-slate-500 dark:text-zinc-400 mt-1 block">
+                          Sistem langsung menguji hash biner otomatis tanpa
+                          perlu tombol submit tambahan.
                         </span>
                       </>
                     )}
                   </div>
                 </div>
+              )}
+
+              {/* INLINE COLLAPSE: Hasil Audit Otomatis Meluncur Turun Di Sini */}
+              {auditResult && (
+                <InlineVerificationResult
+                  result={auditResult}
+                  scannedMethod={scannedMethod}
+                  onReset={() => setAuditResult(null)}
+                />
               )}
             </div>
           </div>
