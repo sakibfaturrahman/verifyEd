@@ -191,25 +191,6 @@ export default function DynamicVerificationResultPage() {
             />
             <span>Periksa Sertifikat Lain</span>
           </Link>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => window.print()}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-xs font-semibold text-slate-700 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-800 shadow-2xs transition-colors cursor-pointer"
-            >
-              <Printer size={14} />
-              <span className="hidden sm:inline">Cetak Halaman Ini</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleShare}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#0e1738] dark:bg-zinc-100 text-white dark:text-[#0e1738] text-xs font-semibold hover:bg-[#1a254d] shadow-2xs transition-colors cursor-pointer active:scale-95"
-            >
-              <Share2 size={14} />
-              <span>Bagikan Bukti</span>
-            </button>
-          </div>
         </div>
 
         {/* Kartu Status Utama */}
