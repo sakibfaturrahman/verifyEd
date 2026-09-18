@@ -3,13 +3,13 @@
 import { useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { gsap } from "@/lib/gsap";
 import { useGSAP } from "@gsap/react";
 import {
   Search,
   CheckCircle2,
-  QrCode,
   FileCheck2,
   ArrowRight,
   Loader2,
@@ -19,12 +19,12 @@ import {
   useVerifyByNumberMutation,
   useVerifyByQrTokenMutation,
   useVerifyByPdfMutation,
-  VerificationResult,
 } from "@/features/verification/hooks/use-verification";
 import { QrCameraScanner } from "@/features/verification/components/qr-camera-scanner";
-import { InlineVerificationResult } from "@/features/verification/components/inline-verification-result";
+import { useVerificationStore } from "@/features/verification/stores/verification-store";
 
 export function HeroSection() {
+  const router = useRouter();
   const container = useRef<HTMLDivElement>(null);
   const pdfInputRef = useRef<HTMLInputElement>(null);
 
@@ -33,11 +33,9 @@ export function HeroSection() {
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [isDraggingPdf, setIsDraggingPdf] = useState(false);
 
-  // State Hasil Audit In-Place
-  const [auditResult, setAuditResult] = useState<VerificationResult | null>(
-    null,
+  const setVerificationResult = useVerificationStore(
+    (state) => state.setVerificationResult,
   );
-  const [scannedMethod, setScannedMethod] = useState<"id" | "qr" | "pdf">("id");
 
   const verifyByNumber = useVerifyByNumberMutation();
   const verifyByQr = useVerifyByQrTokenMutation();
@@ -83,15 +81,15 @@ export function HeroSection() {
     { scope: container },
   );
 
-  // 1. Eksekusi Cek Nomor Seri
+  // 1. Eksekusi Pencarian Nomor Seri
   const handleVerifyById = (e: React.FormEvent) => {
     e.preventDefault();
     if (!certId.trim()) return;
 
     verifyByNumber.mutate(certId.trim(), {
       onSuccess: (data) => {
-        setScannedMethod("id");
-        setAuditResult(data);
+        setVerificationResult(data, "id");
+        router.push(`/verify/result/${encodeURIComponent(certId.trim())}`);
       },
       onError: (err) => {
         toast.error("Gagal Memverifikasi", {
@@ -101,7 +99,7 @@ export function HeroSection() {
     });
   };
 
-  // 2. Eksekusi Scan Kamera QR
+  // 2. Eksekusi Pemindaian Kamera QR
   const handleQrDetected = (decodedText: string) => {
     setIsCameraActive(false);
 
@@ -117,8 +115,8 @@ export function HeroSection() {
     verifyByQr.mutate(token, {
       onSuccess: (data) => {
         toast.dismiss("qr-scan");
-        setScannedMethod("qr");
-        setAuditResult(data);
+        setVerificationResult(data, "qr");
+        router.push(`/verify/result/${encodeURIComponent(token)}`);
       },
       onError: () => {
         toast.error("Kode QR Tidak Valid", {
@@ -129,7 +127,7 @@ export function HeroSection() {
     });
   };
 
-  // 3. Auto-Scan PDF (Drag & Drop / File Pick)
+  // 3. Auto-Scan Berkas PDF
   const executePdfAutoScan = (file: File) => {
     if (file.type !== "application/pdf" && !file.name.endsWith(".pdf")) {
       toast.error("Format Berkas Salah", {
@@ -144,9 +142,13 @@ export function HeroSection() {
     verifyByPdf.mutate(file, {
       onSuccess: (data) => {
         toast.dismiss("pdf-scan");
-        setScannedMethod("pdf");
-        setAuditResult(data);
-        if (pdfInputRef.current) pdfInputRef.current.value = "";
+        setVerificationResult(data, "pdf");
+        const targetSlug =
+          data.certificate?.certificateNumber &&
+          data.certificate.certificateNumber !== "unknown"
+            ? data.certificate.certificateNumber
+            : "pdf-checksum";
+        router.push(`/verify/result/${encodeURIComponent(targetSlug)}`);
       },
       onError: (err) => {
         toast.error("Pemeriksaan Gagal", {
@@ -388,8 +390,7 @@ export function HeroSection() {
                         Buka Kamera & Pindai Barcode QR
                       </span>
                       <span className="text-[11px] text-slate-500 dark:text-zinc-400 mt-1 block">
-                        Arahkan lensa ke kode QR untuk otentikasi seketika tanpa
-                        berpindah halaman
+                        Arahkan lensa ke kode QR untuk otentikasi seketika
                       </span>
                     </div>
                   )}
@@ -449,22 +450,13 @@ export function HeroSection() {
                           Tarik Berkas PDF ke Sini (Auto-Scan)
                         </span>
                         <span className="text-[11px] text-slate-500 dark:text-zinc-400 mt-1 block">
-                          Sistem langsung menguji hash biner otomatis tanpa
-                          perlu tombol submit tambahan.
+                          Sistem langsung menguji hash biner otomatis dan
+                          mengarahkan ke halaman audit.
                         </span>
                       </>
                     )}
                   </div>
                 </div>
-              )}
-
-              {/* INLINE COLLAPSE: Hasil Audit Otomatis Meluncur Turun Di Sini */}
-              {auditResult && (
-                <InlineVerificationResult
-                  result={auditResult}
-                  scannedMethod={scannedMethod}
-                  onReset={() => setAuditResult(null)}
-                />
               )}
             </div>
           </div>
