@@ -39,6 +39,9 @@ export function UserCertDetailModal({
     }
   };
 
+  // Prioritaskan token QR, jika tidak tersedia gunakan nomor sertifikat
+  const verificationIdentifier = cert.qr_token || cert.certificate_number;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
       <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95">
@@ -153,7 +156,7 @@ export function UserCertDetailModal({
               <span>Unduh PDF</span>
             </button>
             <Link
-              href={`/verify/result/${cert.qr_token}`}
+              href={`/verify/result/${encodeURIComponent(cert.certificate_number)}`}
               target="_blank"
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#0e1738] dark:bg-zinc-100 text-white dark:text-[#0e1738] text-xs font-semibold hover:bg-[#1a254d] transition-colors"
             >
