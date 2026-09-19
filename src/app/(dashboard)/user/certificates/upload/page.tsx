@@ -3,9 +3,6 @@
 import { useState, useRef } from "react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { AppSidebar } from "@/components/layouts/dashboard/app-sidebar";
-import { AppTopNav } from "@/components/layouts/dashboard/app-topnav";
-import { UserGuard } from "@/features/auth/components/user-guard";
 import { useUserEventsListQuery } from "@/features/events/hooks/use-user-events";
 import { UploadHeaderBanner } from "@/features/issuance/components/upload-header-banner";
 import { EventPickerCard } from "@/features/issuance/components/event-picker-card";
@@ -17,12 +14,9 @@ import { ArrowRight } from "lucide-react";
 export default function CertificateUploadPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // Store sesi untuk melanjutkan ke penempatan QR
   const setSessionData = useUploadSessionStore((state) => state.setSessionData);
 
-  // Query Agenda Acara
   const { data: eventsData, isPending: isEventsLoading } =
     useUserEventsListQuery({
       limit: 100,
@@ -76,7 +70,6 @@ export default function CertificateUploadPage() {
     }
   };
 
-  // Navigasi ke halaman penempatan stempel QR
   const handleProceedToQrPlacement = () => {
     if (!selectedEventId) {
       toast.error("Agenda Acara Belum Dipilih", {
@@ -100,7 +93,6 @@ export default function CertificateUploadPage() {
       return;
     }
 
-    // Simpan file & data form ke store sesi
     setSessionData({
       eventId: selectedEventId,
       uploadType,
@@ -108,119 +100,94 @@ export default function CertificateUploadPage() {
       recipientNames,
     });
 
-    // Pindah ke halaman preview PDF & penempatan QR presisi
     router.push("/user/certificates/qr-placement");
   };
 
   return (
-    <UserGuard>
-      <div className="flex min-h-screen bg-[#faf8f5] dark:bg-zinc-950 font-sans antialiased selection:bg-[#122253] selection:text-white">
-        <AppSidebar
-          isOpen={isSidebarOpen}
-          setIsOpen={setIsSidebarOpen}
-          roleOverride="user"
-        />
+    <div className="space-y-6">
+      <UploadHeaderBanner />
 
-        <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
-          <AppTopNav
-            onOpenSidebar={() => setIsSidebarOpen(true)}
-            roleOverride="user"
-          />
+      <EventPickerCard
+        events={events}
+        isLoading={isEventsLoading}
+        selectedEventId={selectedEventId}
+        onSelectEvent={(id) => {
+          setSelectedEventId(id);
+          setFiles([]);
+          setRecipientNames([]);
+        }}
+        uploadType={uploadType}
+        onTypeChange={(type) => {
+          setUploadType(type);
+          setFiles([]);
+          setRecipientNames([]);
+        }}
+      />
 
-          <main className="flex-1 px-4 py-5 sm:px-6 sm:py-7 lg:px-8 xl:px-10 w-full max-w-[1520px] mx-auto space-y-6">
-            {/* 1. Header Banner Bersih */}
-            <UploadHeaderBanner />
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="application/pdf"
+        multiple={uploadType === "bulk"}
+        className="hidden"
+        onChange={handleFileChange}
+      />
 
-            {/* 2. Selektor Agenda Kegiatan + Mode Switcher Otomatis */}
-            <EventPickerCard
-              events={events}
-              isLoading={isEventsLoading}
-              selectedEventId={selectedEventId}
-              onSelectEvent={(id) => {
-                setSelectedEventId(id);
+      {selectedEventId && (
+        <div className="animate-in fade-in slide-in-from-bottom-3 duration-200 space-y-6">
+          {uploadType === "single" ? (
+            <SingleUploadCard
+              file={files[0] || null}
+              recipientName={recipientNames[0] || ""}
+              onSelectFile={handleFiles}
+              onNameChange={(name) => setRecipientNames([name])}
+              onBrowseClick={() => fileInputRef.current?.click()}
+            />
+          ) : (
+            <BulkUploadWorkspace
+              files={files}
+              recipientNames={recipientNames}
+              onSelectFiles={handleFiles}
+              onRemoveFile={(idx) => {
+                setFiles((prev) => prev.filter((_, i) => i !== idx));
+                setRecipientNames((prev) => prev.filter((_, i) => i !== idx));
+              }}
+              onNameChange={(idx, val) => {
+                setRecipientNames((prev) => {
+                  const copy = [...prev];
+                  copy[idx] = val;
+                  return copy;
+                });
+              }}
+              onClearAll={() => {
                 setFiles([]);
                 setRecipientNames([]);
               }}
-              uploadType={uploadType}
-              onTypeChange={(type) => {
-                setUploadType(type);
-                setFiles([]);
-                setRecipientNames([]);
-              }}
+              onBrowseClick={() => fileInputRef.current?.click()}
             />
+          )}
 
-            {/* Hidden Native File Input */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="application/pdf"
-              multiple={uploadType === "bulk"}
-              className="hidden"
-              onChange={handleFileChange}
-            />
+          <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <button
+              type="button"
+              onClick={() => router.push("/user/certificates")}
+              className="w-full sm:w-auto px-5 py-3 rounded-2xl border border-slate-200 dark:border-zinc-700 text-xs font-semibold text-slate-600 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer text-center"
+            >
+              Batal
+            </button>
 
-            {/* 3. Area Upload (Aktif otomatis setelah event dipilih) */}
-            {selectedEventId && (
-              <div className="animate-in fade-in slide-in-from-bottom-3 duration-200 space-y-6">
-                {uploadType === "single" ? (
-                  <SingleUploadCard
-                    file={files[0] || null}
-                    recipientName={recipientNames[0] || ""}
-                    onSelectFile={handleFiles}
-                    onNameChange={(name) => setRecipientNames([name])}
-                    onBrowseClick={() => fileInputRef.current?.click()}
-                  />
-                ) : (
-                  <BulkUploadWorkspace
-                    files={files}
-                    recipientNames={recipientNames}
-                    onSelectFiles={handleFiles}
-                    onRemoveFile={(idx) => {
-                      setFiles((prev) => prev.filter((_, i) => i !== idx));
-                      setRecipientNames((prev) =>
-                        prev.filter((_, i) => i !== idx),
-                      );
-                    }}
-                    onNameChange={(idx, val) => {
-                      setRecipientNames((prev) => {
-                        const copy = [...prev];
-                        copy[idx] = val;
-                        return copy;
-                      });
-                    }}
-                    onClearAll={() => {
-                      setFiles([]);
-                      setRecipientNames([]);
-                    }}
-                    onBrowseClick={() => fileInputRef.current?.click()}
-                  />
-                )}
-
-                {/* 4. Action Footer */}
-                <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3">
-                  <button
-                    type="button"
-                    onClick={() => router.push("/user/certificates")}
-                    className="w-full sm:w-auto px-5 py-3 rounded-2xl border border-slate-200 dark:border-zinc-700 text-xs font-semibold text-slate-600 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer text-center"
-                  >
-                    Batal
-                  </button>
-
-                  <button
-                    type="button"
-                    disabled={files.length === 0}
-                    onClick={handleProceedToQrPlacement}
-                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3 rounded-2xl bg-[#122253] text-white text-xs font-bold hover:bg-[#0e1738] transition-all shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                  >
-                    <span>Lanjut Atur Posisi QR ({files.length})</span>
-                    <ArrowRight size={15} />
-                  </button>
-                </div>
-              </div>
-            )}
-          </main>
+            <button
+              type="button"
+              disabled={files.length === 0}
+              onClick={handleProceedToQrPlacement}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3 rounded-2xl bg-[#122253] text-white text-xs font-bold hover:bg-[#0e1738] transition-all shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            >
+              <span>Lanjut Atur Posisi QR ({files.length})</span>
+              <ArrowRight size={15} />
+            </button>
+          </div>
         </div>
-      </div>
-    </UserGuard>
+      )}
+    </div>
   );
 }
