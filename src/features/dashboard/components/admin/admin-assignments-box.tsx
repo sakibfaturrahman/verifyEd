@@ -7,10 +7,13 @@ import { apiClient } from "@/lib/api-client";
 
 interface CertificateItem {
   id: string;
-  certificateNumber: string;
-  recipientName: string;
+  certificate_number?: string;
+  certificateNumber?: string;
+  recipient_name?: string;
+  recipientName?: string;
   status: "active" | "revoked";
-  createdAt: string;
+  created_at?: string;
+  createdAt?: string;
 }
 
 export function AdminAssignmentsBox() {
@@ -53,44 +56,54 @@ export function AdminAssignmentsBox() {
             <p className="text-xs font-medium">Belum ada penerbitan berkas.</p>
           </div>
         ) : (
-          certs.map((task) => (
-            <div
-              key={task.id}
-              className="border border-slate-200/80 dark:border-zinc-800 p-4 rounded-2xl flex flex-col gap-3 bg-white dark:bg-zinc-900 hover:border-slate-300 transition-colors"
-            >
-              <div className="flex items-center justify-between">
-                <span className="font-mono text-[11px] font-semibold text-slate-500 dark:text-zinc-400 truncate max-w-[200px]">
-                  {task.certificateNumber}
-                </span>
-                <span
-                  className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold ${
-                    task.status === "revoked"
-                      ? "bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-950/40 dark:border-rose-900/60"
-                      : "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-900/60"
-                  }`}
-                >
-                  {task.status === "revoked" ? "Dicabut" : "Aktif"}
-                </span>
-              </div>
+          certs.map((task) => {
+            const certNum =
+              task.certificate_number || task.certificateNumber || "-";
+            const name =
+              task.recipient_name || task.recipientName || "Tanpa Nama";
+            const dateStr =
+              task.created_at || task.createdAt || new Date().toISOString();
+            const initials = (name.slice(0, 2) || "NA").toUpperCase();
 
-              <p className="text-xs font-semibold text-[#0e1738] dark:text-zinc-100 leading-relaxed">
-                Penerima: {task.recipientName}
-              </p>
+            return (
+              <div
+                key={task.id}
+                className="border border-slate-200/80 dark:border-zinc-800 p-4 rounded-2xl flex flex-col gap-3 bg-white dark:bg-zinc-900 hover:border-slate-300 transition-colors"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-[11px] font-semibold text-slate-500 dark:text-zinc-400 truncate max-w-[200px]">
+                    {certNum}
+                  </span>
+                  <span
+                    className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold ${
+                      task.status === "revoked"
+                        ? "bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-950/40 dark:border-rose-900/60"
+                        : "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-900/60"
+                    }`}
+                  >
+                    {task.status === "revoked" ? "Dicabut" : "Aktif"}
+                  </span>
+                </div>
 
-              <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-zinc-800 text-[11px] text-slate-500">
-                <span className="font-medium">
-                  {new Date(task.createdAt).toLocaleDateString("id-ID", {
-                    day: "numeric",
-                    month: "short",
-                    year: "numeric",
-                  })}
-                </span>
-                <div className="w-6 h-6 rounded-full bg-[#0e1738] text-[10px] text-white flex items-center justify-center font-bold">
-                  {task.recipientName.slice(0, 2).toUpperCase()}
+                <p className="text-xs font-semibold text-[#0e1738] dark:text-zinc-100 leading-relaxed">
+                  Penerima: {name}
+                </p>
+
+                <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-zinc-800 text-[11px] text-slate-500">
+                  <span className="font-medium">
+                    {new Date(dateStr).toLocaleDateString("id-ID", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </span>
+                  <div className="w-6 h-6 rounded-full bg-[#0e1738] text-[10px] text-white flex items-center justify-center font-bold">
+                    {initials}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
 
         <Link
