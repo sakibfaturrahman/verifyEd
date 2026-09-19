@@ -1,4 +1,3 @@
-// src/features/verification/components/result/not-found-card.tsx
 "use client";
 
 import { useRouter } from "next/navigation";

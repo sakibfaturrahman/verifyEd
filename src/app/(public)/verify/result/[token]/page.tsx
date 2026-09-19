@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -39,14 +39,18 @@ export default function DynamicVerificationResultPage() {
   const verifyByNumber = useVerifyByNumberMutation();
 
   const [currentResult, setCurrentResult] = useState<VerificationResult | null>(
-    storeResult,
+    () => storeResult,
   );
   const [isLoadingDirect, setIsLoadingDirect] = useState(false);
+  const hasFetched = useRef(false);
 
   useEffect(() => {
     setMounted(true);
 
+    if (hasFetched.current) return;
+
     if (!storeResult && rawToken) {
+      hasFetched.current = true;
       setIsLoadingDirect(true);
 
       if (rawToken.toUpperCase().startsWith("CERT-")) {
@@ -74,16 +78,8 @@ export default function DynamicVerificationResultPage() {
           },
         });
       }
-    } else if (storeResult) {
-      setCurrentResult(storeResult);
     }
-  }, [
-    rawToken,
-    storeResult,
-    setVerificationResult,
-    verifyByNumber,
-    verifyByQr,
-  ]);
+  }, [rawToken, storeResult]);
 
   if (!mounted || isLoadingDirect) {
     return (
@@ -167,16 +163,13 @@ export default function DynamicVerificationResultPage() {
       </div>
 
       <main className="flex-1 pt-28 sm:pt-36 pb-16 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto w-full space-y-6 sm:space-y-7">
-        {/* 1. Header Actions (Back, Print, Share) */}
         <ResultHeaderActions onShare={handleShare} />
 
-        {/* 2. Status Card Banner */}
         <ResultStatusCard
           status={currentResult.status}
           scannedMethod={scannedMethod}
         />
 
-        {/* 3. Detail Content */}
         {cert && !isNotFound ? (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             <div className="lg:col-span-7">

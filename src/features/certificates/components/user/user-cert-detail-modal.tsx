@@ -156,7 +156,7 @@ export function UserCertDetailModal({
               <span>Unduh PDF</span>
             </button>
             <Link
-              href={`/verify/result/${encodeURIComponent(cert.certificate_number)}`}
+              href={`/verify/result/${(cert.certificate_number)}`}
               target="_blank"
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#0e1738] dark:bg-zinc-100 text-white dark:text-[#0e1738] text-xs font-semibold hover:bg-[#1a254d] transition-colors"
             >
