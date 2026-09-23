@@ -1,4 +1,3 @@
-// src/components/layouts/dashboard/app-topnav.tsx
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -20,15 +19,60 @@ import {
   Sun,
   Moon,
   CheckCircle2,
+  FileWarning,
+  UserPlus,
+  Layers,
+  Loader2,
+  CheckCheck,
 } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiClient } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
+
+interface AdminNotificationItem {
+  id: string;
+  title: string;
+  message: string;
+  type:
+    | "tampered_document"
+    | "suspicious_activity"
+    | "revoked_access"
+    | "bulk_issuance"
+    | "bulk_revoke"
+    | "new_registration";
+  severity: "high" | "medium" | "low";
+  is_read: boolean;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+interface NotificationsApiResponse {
+  data: AdminNotificationItem[];
+  total: number;
+  unreadCount: number;
+}
 
 interface AppTopNavProps {
   onOpenSidebar?: () => void;
   roleOverride?: "admin" | "user";
 }
 
+// pembantu format waktu relatif
+function formatRelativeTime(dateString: string): string {
+  const diffInSeconds = Math.floor(
+    (Date.now() - new Date(dateString).getTime()) / 1000,
+  );
+  if (diffInSeconds < 60) return "Baru saja";
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+  if (diffInMinutes < 60) return `${diffInMinutes} menit lalu`;
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  if (diffInHours < 24) return `${diffInHours} jam lalu`;
+  const diffInDays = Math.floor(diffInHours / 24);
+  return `${diffInDays} hari lalu`;
+}
+
 export function AppTopNav({ onOpenSidebar, roleOverride }: AppTopNavProps) {
+  const queryClient = useQueryClient();
   const { user, clearAuth } = useAuthStore();
   const [createOpen, setCreateOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -39,17 +83,56 @@ export function AppTopNav({ onOpenSidebar, roleOverride }: AppTopNavProps) {
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
 
-  // Tentukan role aktif (prioritas: prop roleOverride -> Zustand -> default user)
   const currentRole =
     roleOverride || (user?.role === "admin" ? "admin" : "user");
   const isAdmin = currentRole === "admin";
 
-  // Data pengguna aktif
   const userName = user?.name || (isAdmin ? "Administrator" : "Penyelenggara");
   const userEmail = user?.email || "akun@verifyed.id";
   const roleLabel = isAdmin ? "Super Admin" : "Organisasi";
 
-  // Inisialisasi status Dark Mode
+  // ambil data notifikasi dari backend secara real-time
+  const { data: notifData, isPending: isNotifLoading } =
+    useQuery<NotificationsApiResponse>({
+      queryKey: ["admin-notifications"],
+      queryFn: async () => {
+        const res = await apiClient.get<{
+          success: boolean;
+          data: NotificationsApiResponse;
+        }>("/admin/notifications", {
+          params: { page: 1, limit: 10 },
+        });
+        return res.data.data;
+      },
+      enabled: isAdmin,
+      refetchInterval: 30000,
+      staleTime: 1000 * 15,
+    });
+
+  const notifications = notifData?.data || [];
+  const unreadCount = notifData?.unreadCount || 0;
+
+  // mutasi untuk menandai satu notifikasi telah dibaca
+  const markAsReadMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiClient.patch(`/admin/notifications/${id}/read`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-notifications"] });
+    },
+  });
+
+  // mutasi untuk menandai seluruh notifikasi telah dibaca
+  const markAllAsReadMutation = useMutation({
+    mutationFn: async () => {
+      await apiClient.patch("/admin/notifications/read-all");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-notifications"] });
+    },
+  });
+
+  // inisialisasi tema tampilan
   useEffect(() => {
     const isDarkMode =
       localStorage.getItem("theme") === "dark" ||
@@ -76,7 +159,7 @@ export function AppTopNav({ onOpenSidebar, roleOverride }: AppTopNavProps) {
     }
   };
 
-  // Tutup dropdown jika klik di luar
+  // penutup dropdown ketika klik di luar elemen
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as Node;
@@ -102,64 +185,43 @@ export function AppTopNav({ onOpenSidebar, roleOverride }: AppTopNavProps) {
     year: "numeric",
   });
 
-  // Notifikasi kontekstual (Bahasa lebih santai untuk user)
-  const notifications = isAdmin
-    ? [
-        {
-          id: 1,
-          title: "Verifikasi Berhasil",
-          desc: "Dokumen CERT-2026-X89F lolos uji SHA-256 via portal publik.",
-          time: "10 menit lalu",
-          unread: true,
-          type: "success",
-        },
-        {
-          id: 2,
-          title: "Pencabutan Kredensial",
-          desc: "1 sertifikat ditandai revoked atas permohonan panitia.",
-          time: "45 menit lalu",
-          unread: true,
-          type: "alert",
-        },
-      ]
-    : [
-        {
-          id: 1,
-          title: "Sertifikat Berhasil Diterbitkan",
-          desc: "Batch sertifikat seminar Anda telah selesai dan siap diunduh.",
-          time: "15 menit lalu",
-          unread: true,
-          type: "success",
-        },
-        {
-          id: 2,
-          title: "Pengecekan Baru",
-          desc: "Seseorang baru saja memverifikasi sertifikat peserta Anda.",
-          time: "1 jam lalu",
-          unread: false,
-          type: "info",
-        },
-      ];
-
   const handleLogout = () => {
     clearAuth();
     window.location.href = "/login";
   };
 
+  // render ikon notifikasi berdasarkan jenis tipe peristiwa
+  const renderNotifIcon = (
+    type: AdminNotificationItem["type"],
+    severity: AdminNotificationItem["severity"],
+  ) => {
+    if (severity === "high" || type === "tampered_document") {
+      return <FileWarning className="w-3.5 h-3.5 text-rose-500 shrink-0" />;
+    }
+    if (type === "suspicious_activity" || type === "revoked_access") {
+      return <ShieldAlert className="w-3.5 h-3.5 text-amber-500 shrink-0" />;
+    }
+    if (type === "bulk_issuance" || type === "bulk_revoke") {
+      return <Layers className="w-3.5 h-3.5 text-indigo-500 shrink-0" />;
+    }
+    if (type === "new_registration") {
+      return <UserPlus className="w-3.5 h-3.5 text-emerald-500 shrink-0" />;
+    }
+    return <CheckCircle2 className="w-3.5 h-3.5 text-sky-500 shrink-0" />;
+  };
+
   return (
     <header className="sticky top-0 z-30 bg-white/90 dark:bg-zinc-950/90 backdrop-blur-md border-b border-slate-200/80 dark:border-zinc-800 px-4 md:px-8 py-2.5 flex items-center justify-between select-none">
-      {/* 1. SISI KIRI: Sidebar Toggle & Search Bar */}
       <div className="flex items-center flex-1 max-w-md gap-3 md:gap-4">
         <button
           type="button"
           onClick={onOpenSidebar}
-          className="p-2 transition-colors rounded-xl text-slate-500 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800 md:hidden"
+          className="p-2 transition-colors rounded-xl text-slate-500 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800 md:hidden cursor-pointer"
           aria-label="Buka Menu Navigasi"
         >
           <Menu className="w-5 h-5" />
         </button>
 
-        {/* Search Bar Sederhana */}
         <div className="relative hidden w-full sm:block">
           <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
             <Search className="w-3.5 h-3.5" />
@@ -176,15 +238,12 @@ export function AppTopNav({ onOpenSidebar, roleOverride }: AppTopNavProps) {
         </div>
       </div>
 
-      {/* 2. SISI KANAN: Tanggal, Portal Link, Theme, Notifikasi, Action Button, & Profil */}
       <div className="flex items-center gap-2 sm:gap-3">
-        {/* Tanggal Hari Ini */}
         <div className="hidden xl:flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 dark:bg-zinc-900 text-[11px] font-medium text-slate-500 dark:text-zinc-400">
           <Clock className="w-3 h-3 text-slate-400" />
           <span>{today}</span>
         </div>
 
-        {/* Link Portal Cek Sertifikat Publik */}
         <Link
           href="/"
           target="_blank"
@@ -194,11 +253,10 @@ export function AppTopNav({ onOpenSidebar, roleOverride }: AppTopNavProps) {
           <ExternalLink className="w-3.5 h-3.5" />
         </Link>
 
-        {/* Toggle Mode Gelap / Terang */}
         <button
           type="button"
           onClick={toggleTheme}
-          className="p-2 transition-colors border rounded-xl border-slate-200 dark:border-zinc-800 text-slate-600 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-900"
+          className="p-2 transition-colors border rounded-xl border-slate-200 dark:border-zinc-800 text-slate-600 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-900 cursor-pointer"
           aria-label="Ganti Tema"
         >
           {isDark ? (
@@ -208,69 +266,93 @@ export function AppTopNav({ onOpenSidebar, roleOverride }: AppTopNavProps) {
           )}
         </button>
 
-        {/* Notifikasi Popover */}
+        {/* dropdown notifikasi */}
         <div className="relative" ref={notifRef}>
           <button
             type="button"
             onClick={() => setNotifOpen(!notifOpen)}
-            className="relative p-2 transition-colors border rounded-xl border-slate-200 dark:border-zinc-800 text-slate-600 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-900"
+            className="relative p-2 transition-colors border rounded-xl border-slate-200 dark:border-zinc-800 text-slate-600 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-900 cursor-pointer"
             aria-label="Notifikasi"
           >
             <Bell className="w-4 h-4" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-indigo-600 ring-2 ring-white dark:ring-zinc-950" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-rose-600 text-[9px] font-bold text-white shadow-xs">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
           </button>
 
           {notifOpen && (
-            <div className="absolute right-0 z-50 p-3 mt-2 space-y-2 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 shadow-xl w-80 rounded-2xl animate-in fade-in slide-in-from-top-2 duration-150">
+            <div className="absolute right-0 z-50 p-3 mt-2 space-y-2 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 shadow-xl w-80 sm:w-96 rounded-2xl animate-in fade-in slide-in-from-top-2 duration-150">
               <div className="flex items-center justify-between px-2 py-1 border-b border-slate-100 dark:border-zinc-800">
-                <span className="text-xs font-bold text-[#0e1738] dark:text-zinc-100">
-                  {isAdmin
-                    ? "Aktivitas Ledger Dokumen"
-                    : "Pemberitahuan Terbaru"}
-                </span>
-                <button
-                  type="button"
-                  className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
-                >
-                  Tandai Dibaca
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-bold text-[#0e1738] dark:text-zinc-100">
+                    Notifikasi Sistem
+                  </span>
+                  {unreadCount > 0 && (
+                    <span className="px-1.5 py-0.5 text-[9px] font-extrabold rounded-md bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-800/40">
+                      {unreadCount} baru
+                    </span>
+                  )}
+                </div>
+
+                {unreadCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => markAllAsReadMutation.mutate()}
+                    disabled={markAllAsReadMutation.isPending}
+                    className="inline-flex items-center gap-1 text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer disabled:opacity-50"
+                  >
+                    <CheckCheck className="w-3 h-3" />
+                    <span>Tandai Semua Dibaca</span>
+                  </button>
+                )}
               </div>
 
-              <div className="space-y-1 max-h-72 overflow-y-auto no-scrollbar">
-                {notifications.map((n) => (
-                  <div
-                    key={n.id}
-                    className={`p-2.5 rounded-xl text-xs space-y-1 transition-colors ${
-                      n.unread
-                        ? "bg-indigo-50/60 dark:bg-indigo-950/30"
-                        : "hover:bg-slate-50 dark:hover:bg-zinc-800/60"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between font-bold text-[#0e1738] dark:text-zinc-100 text-[11px]">
-                      <span className="flex items-center gap-1.5">
-                        {n.type === "success" && (
-                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                        )}
-                        {n.type === "alert" && (
-                          <ShieldAlert className="w-3 h-3 text-rose-500" />
-                        )}
-                        {n.title}
-                      </span>
-                      <span className="text-[9px] font-normal text-slate-400">
-                        {n.time}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-slate-600 dark:text-zinc-400 line-clamp-2 leading-relaxed">
-                      {n.desc}
-                    </p>
+              <div className="space-y-1.5 max-h-80 overflow-y-auto no-scrollbar">
+                {isNotifLoading ? (
+                  <div className="py-8 flex flex-col items-center justify-center gap-2 text-slate-400">
+                    <Loader2 className="w-4 h-4 animate-spin text-[#122253] dark:text-zinc-400" />
+                    <span className="text-[11px]">Memuat pemberitahuan...</span>
                   </div>
-                ))}
+                ) : notifications.length === 0 ? (
+                  <div className="py-8 text-center text-slate-400 text-xs">
+                    Tidak ada notifikasi saat ini.
+                  </div>
+                ) : (
+                  notifications.map((n) => (
+                    <div
+                      key={n.id}
+                      onClick={() => {
+                        if (!n.is_read) markAsReadMutation.mutate(n.id);
+                      }}
+                      className={`p-2.5 rounded-xl text-xs space-y-1 transition-colors cursor-pointer border ${
+                        !n.is_read
+                          ? "bg-slate-50/80 dark:bg-zinc-800/60 border-slate-200/80 dark:border-zinc-700/80"
+                          : "bg-transparent border-transparent hover:bg-slate-50 dark:hover:bg-zinc-800/40 opacity-70"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between font-bold text-[#0e1738] dark:text-zinc-100 text-[11px]">
+                        <span className="flex items-center gap-1.5 truncate pr-2">
+                          {renderNotifIcon(n.type, n.severity)}
+                          <span className="truncate">{n.title}</span>
+                        </span>
+                        <span className="text-[9px] font-normal text-slate-400 shrink-0">
+                          {formatRelativeTime(n.created_at)}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-600 dark:text-zinc-400 line-clamp-2 leading-relaxed">
+                        {n.message}
+                      </p>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           )}
         </div>
 
-        {/* ACTION BUTTON (User: Tombol Langsung; Admin: Dropdown Menu Lengkap) */}
+        {/* menu aksi cepat */}
         {isAdmin ? (
           <div className="relative" ref={createRef}>
             <button
@@ -325,7 +407,7 @@ export function AppTopNav({ onOpenSidebar, roleOverride }: AppTopNavProps) {
 
         <div className="h-6 w-px bg-slate-200 dark:bg-zinc-800 mx-0.5 hidden sm:block" />
 
-        {/* Profil Dropdown */}
+        {/* dropdown profil akun */}
         <div className="relative" ref={profileRef}>
           <button
             type="button"
@@ -391,7 +473,6 @@ export function AppTopNav({ onOpenSidebar, roleOverride }: AppTopNavProps) {
   );
 }
 
-// Export alias untuk kompatibilitas import lama
 export const AdminTopNav = (props: AppTopNavProps) => (
   <AppTopNav {...props} roleOverride="admin" />
 );
