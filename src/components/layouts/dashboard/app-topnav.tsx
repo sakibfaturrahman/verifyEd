@@ -24,30 +24,43 @@ import {
   Layers,
   Loader2,
   CheckCheck,
+  PartyPopper,
+  ArrowRight,
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
 
-interface AdminNotificationItem {
+export type NotificationType =
+  | "tampered_document"
+  | "suspicious_activity"
+  | "revoked_access"
+  | "bulk_issuance"
+  | "bulk_revoke"
+  | "new_registration"
+  | "welcome"
+  | "certificate_issued"
+  | "bulk_upload_completed"
+  | "certificate_revoked"
+  | "processing_failed";
+
+export type NotificationSeverity = "high" | "medium" | "low";
+
+interface NotificationItemData {
   id: string;
+  user_id: string | null;
+  recipient_role: "admin" | "user" | "all";
   title: string;
   message: string;
-  type:
-    | "tampered_document"
-    | "suspicious_activity"
-    | "revoked_access"
-    | "bulk_issuance"
-    | "bulk_revoke"
-    | "new_registration";
-  severity: "high" | "medium" | "low";
+  type: NotificationType;
+  severity: NotificationSeverity;
   is_read: boolean;
   metadata: Record<string, unknown>;
   created_at: string;
 }
 
 interface NotificationsApiResponse {
-  data: AdminNotificationItem[];
+  data: NotificationItemData[];
   total: number;
   unreadCount: number;
 }
@@ -57,7 +70,6 @@ interface AppTopNavProps {
   roleOverride?: "admin" | "user";
 }
 
-// pembantu format waktu relatif
 function formatRelativeTime(dateString: string): string {
   const diffInSeconds = Math.floor(
     (Date.now() - new Date(dateString).getTime()) / 1000,
@@ -73,7 +85,12 @@ function formatRelativeTime(dateString: string): string {
 
 export function AppTopNav({ onOpenSidebar, roleOverride }: AppTopNavProps) {
   const queryClient = useQueryClient();
-  const { user, clearAuth } = useAuthStore();
+  const authStore = useAuthStore();
+  const user = authStore.user;
+  const token = (authStore as unknown as { token?: string }).token;
+  const clearAuth = authStore.clearAuth;
+
+  const [mounted, setMounted] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -83,6 +100,11 @@ export function AppTopNav({ onOpenSidebar, roleOverride }: AppTopNavProps) {
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
 
+  // Tandai komponen telah terhidrasi di sisi client
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const currentRole =
     roleOverride || (user?.role === "admin" ? "admin" : "user");
   const isAdmin = currentRole === "admin";
@@ -91,48 +113,57 @@ export function AppTopNav({ onOpenSidebar, roleOverride }: AppTopNavProps) {
   const userEmail = user?.email || "akun@verifyed.id";
   const roleLabel = isAdmin ? "Super Admin" : "Organisasi";
 
-  // ambil data notifikasi dari backend secara real-time
+  // Ambil notifikasi hanya ketika komponen sudah mounted dan user terotentikasi
+  const hasAuth = Boolean(mounted && user && (user.id || token));
+
   const { data: notifData, isPending: isNotifLoading } =
     useQuery<NotificationsApiResponse>({
-      queryKey: ["admin-notifications"],
+      queryKey: ["app-notifications"],
       queryFn: async () => {
         const res = await apiClient.get<{
           success: boolean;
           data: NotificationsApiResponse;
-        }>("/admin/notifications", {
+        }>("/notifications", {
           params: { page: 1, limit: 10 },
         });
         return res.data.data;
       },
-      enabled: isAdmin,
-      refetchInterval: 30000,
-      staleTime: 1000 * 15,
+      enabled: hasAuth,
+      refetchInterval: 20000,
+      staleTime: 1000 * 10,
+      retry: (failureCount, error: unknown) => {
+        const status = (error as { response?: { status?: number } })?.response?.status;
+        if (status === 401 || status === 403) return false;
+        return failureCount < 2;
+      },
     });
 
   const notifications = notifData?.data || [];
   const unreadCount = notifData?.unreadCount || 0;
 
-  // mutasi untuk menandai satu notifikasi telah dibaca
+  // Mutasi untuk menandai 1 notifikasi telah dibaca
   const markAsReadMutation = useMutation({
     mutationFn: async (id: string) => {
-      await apiClient.patch(`/admin/notifications/${id}/read`);
+      await apiClient.patch(`/notifications/${id}/read`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["app-notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-notifications-page"] });
     },
   });
 
-  // mutasi untuk menandai seluruh notifikasi telah dibaca
+  // Mutasi untuk menandai seluruh notifikasi telah dibaca
   const markAllAsReadMutation = useMutation({
     mutationFn: async () => {
-      await apiClient.patch("/admin/notifications/read-all");
+      await apiClient.patch("/notifications/read-all");
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin-notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["app-notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-notifications-page"] });
     },
   });
 
-  // inisialisasi tema tampilan
+  // Inisialisasi tema tampilan
   useEffect(() => {
     const isDarkMode =
       localStorage.getItem("theme") === "dark" ||
@@ -159,7 +190,7 @@ export function AppTopNav({ onOpenSidebar, roleOverride }: AppTopNavProps) {
     }
   };
 
-  // penutup dropdown ketika klik di luar elemen
+  // Penutup dropdown ketika klik di luar elemen
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as Node;
@@ -190,24 +221,38 @@ export function AppTopNav({ onOpenSidebar, roleOverride }: AppTopNavProps) {
     window.location.href = "/login";
   };
 
-  // render ikon notifikasi berdasarkan jenis tipe peristiwa
   const renderNotifIcon = (
-    type: AdminNotificationItem["type"],
-    severity: AdminNotificationItem["severity"],
+    type: NotificationType,
+    severity: NotificationSeverity,
   ) => {
-    if (severity === "high" || type === "tampered_document") {
+    if (
+      severity === "high" ||
+      type === "tampered_document" ||
+      type === "processing_failed"
+    ) {
       return <FileWarning className="w-3.5 h-3.5 text-rose-500 shrink-0" />;
     }
-    if (type === "suspicious_activity" || type === "revoked_access") {
+    if (
+      type === "suspicious_activity" ||
+      type === "revoked_access" ||
+      type === "certificate_revoked"
+    ) {
       return <ShieldAlert className="w-3.5 h-3.5 text-amber-500 shrink-0" />;
     }
-    if (type === "bulk_issuance" || type === "bulk_revoke") {
+    if (
+      type === "bulk_issuance" ||
+      type === "bulk_revoke" ||
+      type === "bulk_upload_completed"
+    ) {
       return <Layers className="w-3.5 h-3.5 text-indigo-500 shrink-0" />;
     }
     if (type === "new_registration") {
       return <UserPlus className="w-3.5 h-3.5 text-emerald-500 shrink-0" />;
     }
-    return <CheckCircle2 className="w-3.5 h-3.5 text-sky-500 shrink-0" />;
+    if (type === "welcome") {
+      return <PartyPopper className="w-3.5 h-3.5 text-fuchsia-500 shrink-0" />;
+    }
+    return <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />;
   };
 
   return (
@@ -266,7 +311,7 @@ export function AppTopNav({ onOpenSidebar, roleOverride }: AppTopNavProps) {
           )}
         </button>
 
-        {/* dropdown notifikasi */}
+        {/* Dropdown Notifikasi */}
         <div className="relative" ref={notifRef}>
           <button
             type="button"
@@ -287,7 +332,7 @@ export function AppTopNav({ onOpenSidebar, roleOverride }: AppTopNavProps) {
               <div className="flex items-center justify-between px-2 py-1 border-b border-slate-100 dark:border-zinc-800">
                 <div className="flex items-center gap-1.5">
                   <span className="text-xs font-bold text-[#0e1738] dark:text-zinc-100">
-                    Notifikasi Sistem
+                    Pemberitahuan
                   </span>
                   {unreadCount > 0 && (
                     <span className="px-1.5 py-0.5 text-[9px] font-extrabold rounded-md bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-800/40">
@@ -310,7 +355,11 @@ export function AppTopNav({ onOpenSidebar, roleOverride }: AppTopNavProps) {
               </div>
 
               <div className="space-y-1.5 max-h-80 overflow-y-auto no-scrollbar">
-                {isNotifLoading ? (
+                {!hasAuth ? (
+                  <div className="py-8 text-center text-slate-400 text-xs">
+                    Silakan masuk untuk melihat pemberitahuan.
+                  </div>
+                ) : isNotifLoading ? (
                   <div className="py-8 flex flex-col items-center justify-center gap-2 text-slate-400">
                     <Loader2 className="w-4 h-4 animate-spin text-[#122253] dark:text-zinc-400" />
                     <span className="text-[11px]">Memuat pemberitahuan...</span>
@@ -348,11 +397,25 @@ export function AppTopNav({ onOpenSidebar, roleOverride }: AppTopNavProps) {
                   ))
                 )}
               </div>
+
+              {/* Tautan Navigasi ke Daftar Penuh */}
+              {isAdmin && (
+                <div className="pt-2 border-t border-slate-100 dark:border-zinc-800">
+                  <Link
+                    href="/admin/notifications"
+                    onClick={() => setNotifOpen(false)}
+                    className="flex items-center justify-center gap-1.5 w-full py-1.5 text-center text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-zinc-800/50 rounded-xl transition-colors"
+                  >
+                    <span>Buka Halaman Notifikasi</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
+              )}
             </div>
           )}
         </div>
 
-        {/* menu aksi cepat */}
+        {/* Menu Aksi Cepat */}
         {isAdmin ? (
           <div className="relative" ref={createRef}>
             <button
@@ -407,7 +470,7 @@ export function AppTopNav({ onOpenSidebar, roleOverride }: AppTopNavProps) {
 
         <div className="h-6 w-px bg-slate-200 dark:bg-zinc-800 mx-0.5 hidden sm:block" />
 
-        {/* dropdown profil akun */}
+        {/* Dropdown Profil Pengguna */}
         <div className="relative" ref={profileRef}>
           <button
             type="button"

@@ -2,8 +2,6 @@
 "use client";
 
 import { useState } from "react";
-import { AppSidebar } from "@/components/layouts/dashboard/app-sidebar";
-import { AppTopNav } from "@/components/layouts/dashboard/app-topnav";
 import { UserWelcomeHeader } from "@/features/dashboard/components/user/user-welcome-header";
 import { UserMetricsGrid } from "@/features/dashboard/components/user/user-metrics-grid";
 import { UserRecentEventsBox } from "@/features/dashboard/components/user/user-recent-events-box";
@@ -19,18 +17,11 @@ export default function UserDashboardPage() {
     <UserGuard>
       <div className="flex min-h-screen bg-[#faf8f5] dark:bg-zinc-950 font-sans antialiased">
         {/* 1. Sidebar Khusus User */}
-        <AppSidebar
-          isOpen={isSidebarOpen}
-          setIsOpen={setIsSidebarOpen}
-          roleOverride="user"
-        />
+       
 
         {/* 2. Workspace Area */}
         <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
-          <AppTopNav
-            onOpenSidebar={() => setIsSidebarOpen(true)}
-            roleOverride="user"
-          />
+          
 
           <main className="flex-1 px-4 py-4 sm:px-6 sm:py-6 lg:px-8 xl:px-10 2xl:px-12 w-full max-w-[1680px] mx-auto space-y-4 sm:space-y-5">
             {/* Header Profil Organisasi */}
