@@ -510,13 +510,13 @@ export function AppTopNav({ onOpenSidebar, roleOverride }: AppTopNavProps) {
                 <span>Pengaturan Profil</span>
               </Link>
 
-              <Link
+              {/* <Link
                 href={isAdmin ? "/admin/settings" : "/user/settings"}
                 className="flex items-center gap-2 px-3 py-2 text-xs font-medium transition-colors rounded-xl text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800"
               >
                 <Settings className="w-3.5 h-3.5 text-slate-400" />
                 <span>Pengaturan Akun</span>
-              </Link>
+              </Link> */}
 
               <div className="pt-1 border-t border-slate-100 dark:border-zinc-800">
                 <button
