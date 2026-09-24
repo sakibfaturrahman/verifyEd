@@ -2,6 +2,16 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
 import { AxiosError } from "axios";
 
+export interface BackendAdminStats {
+  totalUsers?: number;
+  activeUsers?: number;
+  totalEvents?: number;
+  totalCertificates?: number;
+  activeCertificates?: number;
+  revokedCertificates?: number;
+  totalVerifications?: number;
+}
+
 export interface AdminDashboardStats {
   totalOrganizations: number;
   totalEvents: number;
@@ -27,12 +37,55 @@ export function useAdminDashboardQuery() {
   return useQuery<AdminDashboardResponse>({
     queryKey: ["admin-dashboard-stats"],
     queryFn: async () => {
-      const res = await apiClient.get<{ data: AdminDashboardResponse }>(
-        "/dashboard/admin",
-      );
-      return res.data.data;
+      // Mengarah ke endpoint yang benar (/admin/dashboard)
+      const res = await apiClient.get<{
+        success: boolean;
+        data: {
+          stats: BackendAdminStats;
+          verificationStats: Partial<VerificationStats> & Record<string, unknown>;
+        };
+      }>("/admin/dashboard");
+
+      const raw = res.data?.data;
+      const rawStats = raw?.stats || {};
+      const rawVStats = raw?.verificationStats || {};
+
+      // Petakan properti agar sesuai dengan tipe yang dikonsumsi oleh metricCards
+      const mappedStats: AdminDashboardStats = {
+        totalOrganizations: Number(rawStats.totalUsers ?? 0),
+        totalEvents: Number(rawStats.totalEvents ?? 0),
+        activeCertificates: Number(rawStats.activeCertificates ?? 0),
+        totalVerifications: Number(rawStats.totalVerifications ?? 0),
+        revokedCertificates: Number(rawStats.revokedCertificates ?? 0),
+        totalIssued: Number(rawStats.totalCertificates ?? 0),
+      };
+
+      const mappedVerificationStats: VerificationStats = {
+        totalScans: Number(
+          rawVStats.totalScans ??
+          rawVStats.total ??
+          rawStats.totalVerifications ??
+          0,
+        ),
+        successfulVerifications: Number(
+          rawVStats.successfulVerifications ??
+          rawVStats.verified ??
+          0,
+        ),
+        tamperedDetections: Number(
+          rawVStats.tamperedDetections ??
+          rawVStats.tampered ??
+          rawVStats.failed ??
+          0,
+        ),
+      };
+
+      return {
+        stats: mappedStats,
+        verificationStats: mappedVerificationStats,
+      };
     },
-    staleTime: 1000 * 60 * 3, // Cache 3 menit
+    staleTime: 1000 * 60 * 3, // 3 menit
   });
 }
 

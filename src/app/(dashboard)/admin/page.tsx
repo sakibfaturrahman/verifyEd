@@ -19,13 +19,24 @@ import {
 export default function AdminDashboardPage() {
   const { data, isPending, isRefetching, refetch } = useAdminDashboardQuery();
 
-  const stats = data?.stats;
+  // Helper agar fleksibel membaca baik format nested { stats: { ... } } maupun root { ... }
+  const rawData = (data as any) || {};
+  const stats = rawData.stats || rawData;
+
+  const formatNumber = (val: number | undefined | null) => {
+    if (typeof val === "number") {
+      return val.toLocaleString("id-ID");
+    }
+    return isPending ? "..." : "0";
+  };
 
   const metricCards = [
     {
       id: "total-orgs",
       label: "Organisasi Terdaftar",
-      value: stats ? stats.totalOrganizations.toLocaleString("id-ID") : "...",
+      value: formatNumber(
+        stats.totalOrganizations ?? stats.totalUsers ?? stats.organizationsCount
+      ),
       unit: "Mitra",
       change: "Status Terverifikasi",
       icon: Building2,
@@ -34,7 +45,7 @@ export default function AdminDashboardPage() {
     {
       id: "total-events",
       label: "Total Agenda Acara",
-      value: stats ? stats.totalEvents.toLocaleString("id-ID") : "...",
+      value: formatNumber(stats.totalEvents ?? stats.eventsCount),
       unit: "Kegiatan",
       change: "Seluruh Periode",
       icon: CalendarDays,
@@ -43,7 +54,7 @@ export default function AdminDashboardPage() {
     {
       id: "active-certs",
       label: "Sertifikat Aktif",
-      value: stats ? stats.activeCertificates.toLocaleString("id-ID") : "...",
+      value: formatNumber(stats.activeCertificates ?? stats.activeCerts),
       unit: "Dokumen",
       change: "Keabsahan Terjamin",
       icon: ShieldCheck,
@@ -52,7 +63,9 @@ export default function AdminDashboardPage() {
     {
       id: "verified-logs",
       label: "Validasi Lolos Uji",
-      value: stats ? stats.totalVerifications.toLocaleString("id-ID") : "...",
+      value: formatNumber(
+        stats.totalVerifications ?? stats.verifiedLogs ?? stats.logsCount
+      ),
       unit: "Pemeriksaan",
       change: "Akurasi Kriptografi 100%",
       icon: FileCheck2,
@@ -61,7 +74,7 @@ export default function AdminDashboardPage() {
     {
       id: "revoked-certs",
       label: "Dokumen Dicabut",
-      value: stats ? stats.revokedCertificates.toLocaleString("id-ID") : "...",
+      value: formatNumber(stats.revokedCertificates ?? stats.revokedCerts),
       unit: "Berkas",
       change: "Status Revoked",
       icon: AlertTriangle,
@@ -70,7 +83,9 @@ export default function AdminDashboardPage() {
     {
       id: "overall-issuance",
       label: "Total Penerbitan",
-      value: stats ? stats.totalIssued.toLocaleString("id-ID") : "...",
+      value: formatNumber(
+        stats.totalIssued ?? stats.totalCertificates ?? stats.certificatesCount
+      ),
       unit: "Lembar",
       change: "Ledger Database Sinkron",
       icon: Award,
