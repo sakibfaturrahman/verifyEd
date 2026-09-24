@@ -1,4 +1,3 @@
-// src/components/layouts/dashboard/app-sidebar.tsx
 "use client";
 
 import React, { useState } from "react";
@@ -11,7 +10,6 @@ import {
   Award,
   UploadCloud,
   Building2,
-  Settings,
   X,
   PanelLeftClose,
   PanelLeft,
@@ -21,6 +19,8 @@ import {
   Bell,
   History,
 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { apiClient } from "@/lib/api-client";
 import { useAuthStore } from "@/stores/auth-store";
 
 export interface NavMenuItem {
@@ -28,126 +28,13 @@ export interface NavMenuItem {
   icon: React.ElementType;
   label: string;
   href: string;
-  badge?: string | null;
+  badge?: string | number | null;
 }
 
 export interface NavMenuGroup {
   title: string;
   items: NavMenuItem[];
 }
-
-// 1. Menu Konfigurasi Role Admin
-const adminMenuGroups: NavMenuGroup[] = [
-  {
-    title: "Ikhtisar",
-    items: [
-      { id: "dashboard", icon: LayoutGrid, label: "Dashboard", href: "/admin" },
-      {
-        id: "statistics",
-        icon: BarChart3,
-        label: "Statistik & Laporan",
-        href: "/admin/statistics",
-      },
-      {
-        id: "alerts",
-        icon: Bell,
-        label: "Notifikasi Sistem",
-        href: "/admin/notifikasi",
-        badge: "3",
-      },
-    ],
-  },
-  {
-    title: "Manajemen Utama",
-    items: [
-      {
-        id: "organizations",
-        icon: Building2,
-        label: "Organisasi & User",
-        href: "/admin/users",
-      },
-      {
-        id: "events",
-        icon: CalendarDays,
-        label: "Agenda & Event",
-        href: "/admin/events",
-      },
-      {
-        id: "certificates",
-        icon: Award,
-        label: "Daftar Sertifikat",
-        href: "/admin/certificates",
-      },
-    ],
-  },
-  {
-    title: "Audit & Sistem",
-    items: [
-      {
-        id: "logs",
-        icon: History,
-        label: "Log Verifikasi",
-        href: "/admin/logs",
-      },
-      {
-        id: "settings",
-        icon: Settings,
-        label: "Pengaturan",
-        href: "/admin/settings",
-      },
-    ],
-  },
-];
-
-// 2. Menu Konfigurasi Role User / Organisasi
-const userMenuGroups: NavMenuGroup[] = [
-  {
-    title: "Ikhtisar",
-    items: [
-      { id: "dashboard", icon: LayoutGrid, label: "Dashboard", href: "/user" },
-    ],
-  },
-  {
-    title: "Manajemen Dokumen",
-    items: [
-      {
-        id: "events",
-        icon: CalendarDays,
-        label: "Agenda Acara",
-        href: "/user/events",
-      },
-      {
-        id: "certificates",
-        icon: Award,
-        label: "Daftar Sertifikat",
-        href: "/user/certificates",
-      },
-      {
-        id: "upload",
-        icon: UploadCloud,
-        label: "Terbitkan Sertifikat",
-        href: "/user/certificates/upload",
-      },
-    ],
-  },
-  {
-    title: "Akun & Keamanan",
-    items: [
-      {
-        id: "profile",
-        icon: Building2,
-        label: "Profil Organisasi",
-        href: "/user/profile",
-      },
-      {
-        id: "settings",
-        icon: Settings,
-        label: "Pengaturan Akun",
-        href: "/user/settings",
-      },
-    ],
-  },
-];
 
 export function AppSidebar({
   isOpen,
@@ -162,12 +49,151 @@ export function AppSidebar({
   const [isCollapsed, setIsCollapsed] = useState(false);
   const user = useAuthStore((state) => state.user);
 
-  // Deteksi role berdasarkan prop atau dari auth store (default: user)
+  // Ambil jumlah notifikasi belum dibaca secara real-time
+  const { data: notifData } = useQuery<{ unreadCount: number }>({
+    queryKey: ["app-notifications"],
+    queryFn: async () => {
+      const res = await apiClient.get<{
+        success: boolean;
+        data: { unreadCount: number };
+      }>("/notifications", {
+        params: { page: 1, limit: 1 },
+      });
+      return res.data.data;
+    },
+    enabled: Boolean(user && user.id),
+    refetchInterval: 30000,
+  });
+
+  const unreadCount = notifData?.unreadCount || 0;
+  const notifBadge =
+    unreadCount > 0 ? (unreadCount > 99 ? "99+" : unreadCount) : null;
+
+  // Deteksi role berdasarkan prop atau dari auth store
   const currentRole =
     roleOverride || (user?.role === "admin" ? "admin" : "user");
   const isAdmin = currentRole === "admin";
-  const menuGroups = isAdmin ? adminMenuGroups : userMenuGroups;
   const homeHref = isAdmin ? "/admin" : "/user";
+
+  // 1. Menu Konfigurasi Role Admin
+  const adminMenuGroups: NavMenuGroup[] = [
+    {
+      title: "Ikhtisar",
+      items: [
+        {
+          id: "dashboard",
+          icon: LayoutGrid,
+          label: "Dashboard",
+          href: "/admin",
+        },
+        {
+          id: "statistics",
+          icon: BarChart3,
+          label: "Statistik & Laporan",
+          href: "/admin/statistics",
+        },
+        {
+          id: "alerts",
+          icon: Bell,
+          label: "Notifikasi Sistem",
+          href: "/admin/notifications",
+          badge: notifBadge,
+        },
+      ],
+    },
+    {
+      title: "Manajemen Utama",
+      items: [
+        {
+          id: "organizations",
+          icon: Building2,
+          label: "Organisasi & User",
+          href: "/admin/users",
+        },
+        {
+          id: "events",
+          icon: CalendarDays,
+          label: "Agenda & Event",
+          href: "/admin/events",
+        },
+        {
+          id: "certificates",
+          icon: Award,
+          label: "Daftar Sertifikat",
+          href: "/admin/certificates",
+        },
+      ],
+    },
+    {
+      title: "Audit & Sistem",
+      items: [
+        {
+          id: "logs",
+          icon: History,
+          label: "Log Verifikasi",
+          href: "/admin/logs",
+        },
+      ],
+    },
+  ];
+
+  // 2. Menu Konfigurasi Role User / Organisasi
+  const userMenuGroups: NavMenuGroup[] = [
+    {
+      title: "Ikhtisar",
+      items: [
+        {
+          id: "dashboard",
+          icon: LayoutGrid,
+          label: "Dashboard",
+          href: "/user",
+        },
+        {
+          id: "notifications",
+          icon: Bell,
+          label: "Pemberitahuan",
+          href: "/user/notifications",
+          badge: notifBadge,
+        },
+      ],
+    },
+    {
+      title: "Manajemen Dokumen",
+      items: [
+        {
+          id: "events",
+          icon: CalendarDays,
+          label: "Agenda Acara",
+          href: "/user/events",
+        },
+        {
+          id: "certificates",
+          icon: Award,
+          label: "Daftar Sertifikat",
+          href: "/user/certificates",
+        },
+        {
+          id: "upload",
+          icon: UploadCloud,
+          label: "Terbitkan Sertifikat",
+          href: "/user/certificates/upload",
+        },
+      ],
+    },
+    {
+      title: "Akun & Organisasi",
+      items: [
+        {
+          id: "profile",
+          icon: Building2,
+          label: "Profil Organisasi",
+          href: "/user/profile",
+        },
+      ],
+    },
+  ];
+
+  const menuGroups = isAdmin ? adminMenuGroups : userMenuGroups;
 
   const SidebarBody = () => (
     <aside
@@ -215,7 +241,7 @@ export function AppSidebar({
         <button
           type="button"
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="hidden md:flex p-1.5 2xl:p-2 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-zinc-200 hover:bg-slate-100 dark:hover:bg-zinc-800/60 transition-colors"
+          className="hidden md:flex p-1.5 2xl:p-2 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-zinc-200 hover:bg-slate-100 dark:hover:bg-zinc-800/60 transition-colors cursor-pointer"
           title={isCollapsed ? "Buka Sidebar" : "Ciutkan Sidebar"}
         >
           {isCollapsed ? (
@@ -229,7 +255,7 @@ export function AppSidebar({
         <button
           type="button"
           onClick={() => setIsOpen(false)}
-          className="md:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-700"
+          className="md:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-700 cursor-pointer"
         >
           <X size={18} />
         </button>
@@ -267,13 +293,19 @@ export function AppSidebar({
                         : "text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-100 hover:bg-slate-100 dark:hover:bg-zinc-900/60"
                     }`}
                   >
-                    <Icon
-                      className={`shrink-0 transition-colors w-4 h-4 2xl:w-5 2xl:h-5 ${
-                        isActive
-                          ? "text-white"
-                          : "text-slate-400 dark:text-zinc-500 group-hover:text-slate-800 dark:group-hover:text-zinc-200"
-                      }`}
-                    />
+                    <div className="relative shrink-0">
+                      <Icon
+                        className={`transition-colors w-4 h-4 2xl:w-5 2xl:h-5 ${
+                          isActive
+                            ? "text-white"
+                            : "text-slate-400 dark:text-zinc-500 group-hover:text-slate-800 dark:group-hover:text-zinc-200"
+                        }`}
+                      />
+                      {/* Titik indikator kecil saat sidebar dicutkan */}
+                      {isCollapsed && Boolean(item.badge) && (
+                        <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rose-600 ring-2 ring-white dark:ring-zinc-950" />
+                      )}
+                    </div>
 
                     {!isCollapsed && (
                       <div className="flex items-center justify-between flex-1 truncate">
@@ -282,8 +314,8 @@ export function AppSidebar({
                           <span
                             className={`text-[10px] 2xl:text-xs font-bold px-1.5 2xl:px-2 py-0.5 rounded-full ${
                               isActive
-                                ? "bg-white/20 text-white"
-                                : "bg-slate-100 text-slate-600 dark:bg-zinc-800 dark:text-zinc-300"
+                                ? "bg-rose-600 text-white"
+                                : "bg-rose-100 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400"
                             }`}
                           >
                             {item.badge}
@@ -293,8 +325,13 @@ export function AppSidebar({
                     )}
 
                     {isCollapsed && (
-                      <div className="absolute left-full ml-3.5 px-2.5 2xl:px-3 py-1.5 rounded-lg bg-[#0e1738] text-white text-xs 2xl:text-sm font-medium whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity shadow-lg z-50">
-                        {item.label}
+                      <div className="absolute left-full ml-3.5 px-2.5 2xl:px-3 py-1.5 rounded-lg bg-[#0e1738] text-white text-xs 2xl:text-sm font-medium whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity shadow-lg z-50 flex items-center gap-1.5">
+                        <span>{item.label}</span>
+                        {item.badge && (
+                          <span className="px-1.5 py-0.2 rounded-full bg-rose-600 text-white text-[9px] font-bold">
+                            {item.badge}
+                          </span>
+                        )}
                       </div>
                     )}
                   </Link>
@@ -303,47 +340,6 @@ export function AppSidebar({
             </nav>
           </div>
         ))}
-      </div>
-
-      {/* 3. Footer Card (Kondisional: Node Primer vs Kuota Sertifikat) */}
-      <div className="p-3 2xl:p-4 border-t border-slate-100 dark:border-zinc-800/80 bg-slate-50/60 dark:bg-zinc-900/40">
-        {!isCollapsed ? (
-          isAdmin ? (
-            /* Footer Status Node (Admin) */
-            <div className="p-2.5 2xl:p-3.5 rounded-xl 2xl:rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex items-center justify-between">
-              <div className="flex items-center gap-2.5 2xl:gap-3">
-                <span className="w-2 h-2 2xl:w-2.5 2xl:h-2.5 rounded-full bg-emerald-600 shrink-0" />
-                <div>
-                  <p className="text-[11px] 2xl:text-xs font-bold text-[#0e1738] dark:text-zinc-200 leading-tight">
-                    Node Primer
-                  </p>
-                  <p className="text-[10px] 2xl:text-[11px] text-slate-500">
-                    SHA-256 Siaga
-                  </p>
-                </div>
-              </div>
-              <Activity className="w-3.5 h-3.5 2xl:w-4 2xl:h-4 text-slate-400" />
-            </div>
-          ) : (
-            /* Footer Kuota Sertifikat (User/Organisasi) */
-            <div className="p-3 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-              <div className="flex items-center justify-between text-[11px] font-bold text-[#0e1738] dark:text-zinc-200">
-                <span>Kuota Sertifikat</span>
-                <span className="text-emerald-600">85% Tersedia</span>
-              </div>
-              <div className="w-full bg-slate-100 dark:bg-zinc-800 h-1.5 rounded-full mt-2 overflow-hidden">
-                <div className="bg-[#0e1738] dark:bg-indigo-500 h-full w-[15%]" />
-              </div>
-              <p className="text-[10px] text-slate-400 mt-2">
-                150 / 1.000 Dokumen Diterbitkan
-              </p>
-            </div>
-          )
-        ) : (
-          <div className="flex justify-center py-1 2xl:py-2">
-            <span className="w-2 h-2 2xl:w-2.5 2xl:h-2.5 rounded-full bg-emerald-600" />
-          </div>
-        )}
       </div>
     </aside>
   );
@@ -380,7 +376,6 @@ export function AppSidebar({
   );
 }
 
-// Export alias backward-compatibility agar tidak perlu mengubah semua import lama
 export const AdminSidebar = (props: {
   isOpen: boolean;
   setIsOpen: (v: boolean) => void;

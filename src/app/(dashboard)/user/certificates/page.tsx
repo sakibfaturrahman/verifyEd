@@ -2,9 +2,12 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiClient } from "@/lib/api-client";
 import { UserCertToolbar } from "@/features/certificates/components/user/user-cert-toolbar";
 import { UserCertDetailModal } from "@/features/certificates/components/user/user-cert-detail-modal";
 import { CertRevokeModal } from "@/features/certificates/components/user/cert-revoke-modal";
+import { CertDeleteModal } from "@/features/certificates/components/user/cert-delete-modal";
 import {
   useUserCertificatesListQuery,
   useRevokeUserCertMutation,
@@ -17,12 +20,14 @@ import {
   XCircle,
   Eye,
   Download,
+  Trash2,
   Loader2,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
 
 export default function UserCertificatesPage() {
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<
     "all" | "active" | "revoked"
@@ -35,6 +40,11 @@ export default function UserCertificatesPage() {
     useState<UserCertificateItem | null>(null);
   const [revokeModalOpen, setRevokeModalOpen] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
+  // State untuk Custom Delete Modal
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [targetDeleteCert, setTargetDeleteCert] =
+    useState<UserCertificateItem | null>(null);
 
   const {
     data: response,
@@ -49,6 +59,32 @@ export default function UserCertificatesPage() {
 
   const revokeMutation = useRevokeUserCertMutation();
   const regenerateMutation = useRegenerateCertMutation();
+
+  // Mutasi Hapus Tunggal / Massal
+  const deleteMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      // Hapus berurutan atau paralel
+      await Promise.all(ids.map((id) => apiClient.delete(`/certificates/${id}`)));
+    },
+    onSuccess: (_, deletedIds) => {
+      toast.success("Penghapusan Berhasil", {
+        description: `${deletedIds.length} sertifikat dan berkas PDF fisik telah dimusnahkan.`,
+      });
+      setSelectedIds((prev) => prev.filter((id) => !deletedIds.includes(id)));
+      setDeleteModalOpen(false);
+      setTargetDeleteCert(null);
+      queryClient.invalidateQueries({ queryKey: ["user-certificates"] });
+      queryClient.invalidateQueries({ queryKey: ["user-dashboard"] });
+    },
+    onError: (err: unknown) => {
+      const axiosErr = err as { response?: { data?: { message?: string } } };
+      toast.error("Gagal Menghapus Sertifikat", {
+        description:
+          axiosErr.response?.data?.message ||
+          "Terjadi kesalahan saat memproses penghapusan dokumen.",
+      });
+    },
+  });
 
   const certs = response?.data || [];
   const meta = response?.meta || {
@@ -112,9 +148,7 @@ export default function UserCertificatesPage() {
       try {
         const url = await fetchUserCertDownloadUrl(id);
         window.open(url, "_blank");
-      } catch {
-        // Lanjutkan unduhan item berikutnya jika ada yang gagal
-      }
+      } catch {}
     }
     setSelectedIds([]);
   };
@@ -162,6 +196,27 @@ export default function UserCertificatesPage() {
     );
   };
 
+  // Handler Buka Modal Hapus Tunggal
+  const openSingleDeleteModal = (cert: UserCertificateItem) => {
+    setTargetDeleteCert(cert);
+    setDeleteModalOpen(true);
+  };
+
+  // Handler Buka Modal Hapus Massal (berdasarkan ceklis)
+  const openBulkDeleteModal = () => {
+    setTargetDeleteCert(null);
+    setDeleteModalOpen(true);
+  };
+
+  // Konfirmasi Eksekusi Hapus
+  const handleConfirmDelete = () => {
+    if (targetDeleteCert) {
+      deleteMutation.mutate([targetDeleteCert.id]);
+    } else if (selectedIds.length > 0) {
+      deleteMutation.mutate(selectedIds);
+    }
+  };
+
   return (
     <div className="space-y-4 sm:space-y-5">
       <div className="bg-white dark:bg-zinc-900 border border-slate-200/90 dark:border-zinc-800 rounded-2xl p-5 shadow-xs">
@@ -174,6 +229,7 @@ export default function UserCertificatesPage() {
         </p>
       </div>
 
+      {/* Toolbar Tabel */}
       <UserCertToolbar
         searchQuery={searchQuery}
         onSearchChange={(val) => {
@@ -190,6 +246,27 @@ export default function UserCertificatesPage() {
         onOpenBulkRevoke={() => setRevokeModalOpen(true)}
       />
 
+      {/* Floating Action Bar untuk Sertifikat yang Diceklis */}
+      {selectedIds.length > 0 && (
+        <div className="flex items-center justify-between p-3.5 px-5 rounded-2xl bg-[#0e1738] dark:bg-zinc-800 text-white shadow-lg animate-in fade-in slide-in-from-top-2 duration-150">
+          <span className="text-xs font-semibold">
+            <strong className="text-indigo-300 font-bold">{selectedIds.length}</strong> sertifikat terpilih
+          </span>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={openBulkDeleteModal}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-xs font-bold transition-colors cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Hapus Terpilih ({selectedIds.length})</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Tabel Sertifikat */}
       <div className="bg-white dark:bg-zinc-900 border border-slate-200/90 dark:border-zinc-800 rounded-2xl shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
@@ -238,6 +315,7 @@ export default function UserCertificatesPage() {
               ) : (
                 certs.map((cert) => {
                   const isSelected = selectedIds.includes(cert.id);
+
                   return (
                     <tr
                       key={cert.id}
@@ -290,7 +368,7 @@ export default function UserCertificatesPage() {
                         )}
                       </td>
                       <td className="py-3.5 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
+                        <div className="flex items-center justify-end gap-1">
                           <button
                             type="button"
                             onClick={() => setActiveDetailCert(cert)}
@@ -317,6 +395,14 @@ export default function UserCertificatesPage() {
                               <Download className="w-4 h-4" />
                             )}
                           </button>
+                          <button
+                            type="button"
+                            onClick={() => openSingleDeleteModal(cert)}
+                            className="p-1.5 rounded-lg text-rose-500 hover:text-rose-700 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+                            title="Hapus Dokumen"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -327,6 +413,7 @@ export default function UserCertificatesPage() {
           </table>
         </div>
 
+        {/* Paginasi */}
         <div className="px-4 py-3 border-t border-slate-100 dark:border-zinc-800 flex items-center justify-between text-xs text-slate-500">
           <div>
             Total:{" "}
@@ -359,6 +446,7 @@ export default function UserCertificatesPage() {
         </div>
       </div>
 
+      {/* Modal Rincian */}
       <UserCertDetailModal
         cert={activeDetailCert}
         onClose={() => setActiveDetailCert(null)}
@@ -366,12 +454,29 @@ export default function UserCertificatesPage() {
         onRegenerateFile={handleRegenerateFile}
         isRegenerating={regenerateMutation.isPending}
       />
+
+      {/* Modal Pencabutan (Revoke) */}
       <CertRevokeModal
         isOpen={revokeModalOpen}
         onClose={() => setRevokeModalOpen(false)}
         selectedCount={selectedIds.length}
         onConfirm={handleConfirmRevoke}
         isRevoking={revokeMutation.isPending}
+      />
+
+      {/* Modal Kustom Penghapusan (Tunggal & Massal) */}
+      <CertDeleteModal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          if (!deleteMutation.isPending) {
+            setDeleteModalOpen(false);
+            setTargetDeleteCert(null);
+          }
+        }}
+        onConfirm={handleConfirmDelete}
+        isDeleting={deleteMutation.isPending}
+        certCount={targetDeleteCert ? 1 : selectedIds.length}
+        singleCertNumber={targetDeleteCert?.certificate_number}
       />
     </div>
   );
