@@ -2,7 +2,6 @@ import { PublicNavbar } from "@/components/layouts/public-navbar";
 import { HeroSection } from "@/components/sections/hero-section";
 import { AboutSection } from "@/components/sections/about-section";
 import { TestimonialsSection } from "@/components/sections/testimonials-section";
-import { OverlappingSteps } from "@/components/sections/overlapping-steps";
 import { PublicFooter } from "@/components/layouts/public-footer";
 
 export default function GuestLandingPage() {
@@ -11,10 +10,7 @@ export default function GuestLandingPage() {
       <PublicNavbar />
       <HeroSection />
       <AboutSection />
-
-      {/* Testimonials Grid & Bento */}
       <TestimonialsSection />
-
       <PublicFooter />
     </main>
   );

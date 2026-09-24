@@ -95,13 +95,12 @@ export default function QrPlacementPage() {
       if (uploadType === "single") {
         const formData = new FormData();
         formData.append("event_id", eventId);
-        formData.append("recipient_name", recipientNames[0].trim());
+        formData.append("recipient_name", recipientNames[0]?.trim() || "");
         formData.append("qr_config", JSON.stringify(qrConfig));
         formData.append("file", files[0]);
 
-        await apiClient.post("/certificates/upload", formData, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
+        // Kirim tanpa menimpa header manual
+        await apiClient.post("/certificates/upload", formData);
 
         toast.success("Dokumen Berhasil Diterbitkan", {
           id: toastId,
@@ -112,13 +111,13 @@ export default function QrPlacementPage() {
         formData.append("event_id", eventId);
         formData.append("recipient_names", JSON.stringify(recipientNames));
         formData.append("qr_config", JSON.stringify(qrConfig));
+
         files.forEach((file) => {
           formData.append("files", file);
         });
 
-        await apiClient.post("/certificates/upload/bulk", formData, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
+        // Kirim tanpa menimpa header manual
+        await apiClient.post("/certificates/upload/bulk", formData);
 
         toast.success("Penerbitan Massal Selesai", {
           id: toastId,
