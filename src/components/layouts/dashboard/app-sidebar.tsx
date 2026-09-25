@@ -146,13 +146,6 @@ export function AppSidebar({
           label: "Dashboard",
           href: "/user",
         },
-        {
-          id: "notifications",
-          icon: Bell,
-          label: "Pemberitahuan",
-          href: "/user/notifications",
-          badge: notifBadge,
-        },
       ],
     },
     {

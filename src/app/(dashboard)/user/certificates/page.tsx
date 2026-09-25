@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import JSZip from "jszip";
+import { saveAs } from "file-saver";
 import { apiClient } from "@/lib/api-client";
 import { UserCertToolbar } from "@/features/certificates/components/user/user-cert-toolbar";
 import { UserCertDetailModal } from "@/features/certificates/components/user/user-cert-detail-modal";
@@ -24,6 +26,7 @@ import {
   Loader2,
   ChevronLeft,
   ChevronRight,
+  Archive,
 } from "lucide-react";
 
 export default function UserCertificatesPage() {
@@ -40,6 +43,7 @@ export default function UserCertificatesPage() {
     useState<UserCertificateItem | null>(null);
   const [revokeModalOpen, setRevokeModalOpen] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [isZipping, setIsZipping] = useState(false);
 
   // State untuk Custom Delete Modal
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -50,6 +54,7 @@ export default function UserCertificatesPage() {
     data: response,
     isPending,
     isPlaceholderData,
+    refetch,
   } = useUserCertificatesListQuery({
     page,
     limit,
@@ -60,21 +65,38 @@ export default function UserCertificatesPage() {
   const revokeMutation = useRevokeUserCertMutation();
   const regenerateMutation = useRegenerateCertMutation();
 
-  // Mutasi Hapus Tunggal / Massal
+  // Helper untuk me-refresh seluruh data sertifikat & dasbor secara agresif
+  const refreshCertificateData = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: ["user-certificates"],
+        exact: false,
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ["user-dashboard"],
+        exact: false,
+      }),
+      refetch(),
+    ]);
+  };
+
+  // Mutasi Hapus Tunggal / Massal dengan Auto Refetch Seketika
   const deleteMutation = useMutation({
     mutationFn: async (ids: string[]) => {
-      // Hapus berurutan atau paralel
-      await Promise.all(ids.map((id) => apiClient.delete(`/certificates/${id}`)));
+      await Promise.all(
+        ids.map((id) => apiClient.delete(`/certificates/${id}`)),
+      );
+      return ids;
     },
-    onSuccess: (_, deletedIds) => {
+    onSuccess: async (deletedIds) => {
       toast.success("Penghapusan Berhasil", {
-        description: `${deletedIds.length} sertifikat dan berkas PDF fisik telah dimusnahkan.`,
+        description: `${deletedIds.length} sertifikat dan berkas fisik berhasil dihapus.`,
       });
       setSelectedIds((prev) => prev.filter((id) => !deletedIds.includes(id)));
       setDeleteModalOpen(false);
       setTargetDeleteCert(null);
-      queryClient.invalidateQueries({ queryKey: ["user-certificates"] });
-      queryClient.invalidateQueries({ queryKey: ["user-dashboard"] });
+
+      await refreshCertificateData();
     },
     onError: (err: unknown) => {
       const axiosErr = err as { response?: { data?: { message?: string } } };
@@ -142,30 +164,97 @@ export default function UserCertificatesPage() {
     }
   };
 
+  // Handler Unduh Massal dalam Format .ZIP
   const handleBulkDownload = async () => {
-    toast.loading("Membuka unduhan berkas terpilih...", { duration: 1500 });
-    for (const id of selectedIds) {
-      try {
-        const url = await fetchUserCertDownloadUrl(id);
-        window.open(url, "_blank");
-      } catch {}
+    if (selectedIds.length === 0) return;
+
+    setIsZipping(true);
+    const toastId = toast.loading("Menyiapkan arsip ZIP sertifikat...", {
+      description: "0% selesai",
+    });
+
+    try {
+      const zip = new JSZip();
+      const folder = zip.folder("Sertifikat-VerifyEd");
+
+      const selectedCerts = certs.filter((c) => selectedIds.includes(c.id));
+      let completedCount = 0;
+
+      for (const cert of selectedCerts) {
+        try {
+          const downloadUrl = await fetchUserCertDownloadUrl(cert.id);
+          if (!downloadUrl) continue;
+
+          const res = await fetch(downloadUrl);
+          if (!res.ok) continue;
+
+          const blob = await res.blob();
+          const cleanRecipient = cert.recipient_name.replace(
+            /[\\/:*?"<>|]/g,
+            "_",
+          );
+          const fileName = `${cert.certificate_number} - ${cleanRecipient}.pdf`;
+
+          folder?.file(fileName, blob);
+        } catch (fetchErr) {
+          console.error(
+            `Gagal mengambil sertifikat ${cert.certificate_number}:`,
+            fetchErr,
+          );
+        }
+
+        completedCount++;
+        const percent = Math.round(
+          (completedCount / selectedCerts.length) * 100,
+        );
+        toast.loading("Mengemas berkas sertifikat ke ZIP...", {
+          id: toastId,
+          description: `${percent}% (${completedCount}/${selectedCerts.length} berkas)`,
+        });
+      }
+
+      toast.loading("Mengompresi arsip ZIP...", { id: toastId });
+      const zipContent = await zip.generateAsync({
+        type: "blob",
+        compression: "DEFLATE",
+        compressionOptions: { level: 6 },
+      });
+
+      const dateStr = new Date().toISOString().split("T")[0];
+      saveAs(zipContent, `Sertifikat-VerifyEd-${dateStr}.zip`);
+
+      toast.success("Unduhan ZIP Berhasil", {
+        id: toastId,
+        description: `${completedCount} sertifikat berhasil dikompresi ke dalam berkas ZIP.`,
+      });
+
+      setSelectedIds([]);
+    } catch (err: unknown) {
+      console.error("ZIP Generation Error:", err);
+      toast.error("Gagal Mengunduh ZIP", {
+        id: toastId,
+        description: "Terjadi kesalahan saat mengompresi berkas dokumen.",
+      });
+    } finally {
+      setIsZipping(false);
     }
-    setSelectedIds([]);
   };
 
   const handleConfirmRevoke = async (reason: string) => {
     if (selectedIds.length === 0) return;
 
     try {
-      for (const id of selectedIds) {
-        await revokeMutation.mutateAsync({ id, reason });
-      }
+      await Promise.all(
+        selectedIds.map((id) => revokeMutation.mutateAsync({ id, reason })),
+      );
 
-      toast.error("Sertifikat Telah Dibatalkan", {
-        description: `${selectedIds.length} sertifikat berhasil dinonaktifkan dari sistem.`,
+      toast.success("Sertifikat Berhasil Dicabut", {
+        description: `${selectedIds.length} sertifikat telah dinonaktifkan dari sistem.`,
       });
       setRevokeModalOpen(false);
       setSelectedIds([]);
+
+      await refreshCertificateData();
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { message?: string } } };
       toast.error("Gagal Membatalkan Sertifikat", {
@@ -180,11 +269,13 @@ export default function UserCertificatesPage() {
     regenerateMutation.mutate(
       { id: certId, file },
       {
-        onSuccess: (res) => {
+        onSuccess: async (res) => {
           toast.success("Dokumen Berhasil Diperbarui", {
-            description: `Berkas PDF baru untuk ${res.data?.certificate_number} berhasil dibuat ulang.`,
+            description: `Berkas PDF baru untuk ${res.data?.certificate_number} berhasil diperbarui dengan penempatan QR terbaru.`,
           });
           setActiveDetailCert(null);
+
+          await refreshCertificateData();
         },
         onError: (err) => {
           toast.error("Gagal Memperbarui Berkas", {
@@ -196,19 +287,16 @@ export default function UserCertificatesPage() {
     );
   };
 
-  // Handler Buka Modal Hapus Tunggal
   const openSingleDeleteModal = (cert: UserCertificateItem) => {
     setTargetDeleteCert(cert);
     setDeleteModalOpen(true);
   };
 
-  // Handler Buka Modal Hapus Massal (berdasarkan ceklis)
   const openBulkDeleteModal = () => {
     setTargetDeleteCert(null);
     setDeleteModalOpen(true);
   };
 
-  // Konfirmasi Eksekusi Hapus
   const handleConfirmDelete = () => {
     if (targetDeleteCert) {
       deleteMutation.mutate([targetDeleteCert.id]);
@@ -225,7 +313,7 @@ export default function UserCertificatesPage() {
         </h1>
         <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5 font-medium">
           Pantau seluruh dokumen yang sudah diberi barcode verifikasi dan cek
-          status keasliannya kapan saja.
+          status keasliannya secara langsung.
         </p>
       </div>
 
@@ -250,14 +338,34 @@ export default function UserCertificatesPage() {
       {selectedIds.length > 0 && (
         <div className="flex items-center justify-between p-3.5 px-5 rounded-2xl bg-[#0e1738] dark:bg-zinc-800 text-white shadow-lg animate-in fade-in slide-in-from-top-2 duration-150">
           <span className="text-xs font-semibold">
-            <strong className="text-indigo-300 font-bold">{selectedIds.length}</strong> sertifikat terpilih
+            <strong className="text-indigo-300 font-bold">
+              {selectedIds.length}
+            </strong>{" "}
+            sertifikat terpilih
           </span>
 
           <div className="flex items-center gap-2">
+            {/* Tombol Unduh ZIP Massal */}
             <button
               type="button"
+              disabled={isZipping}
+              onClick={handleBulkDownload}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-xs font-bold transition-colors cursor-pointer disabled:opacity-50"
+            >
+              {isZipping ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Archive className="w-3.5 h-3.5" />
+              )}
+              <span>{isZipping ? "Mengompresi..." : "Unduh ZIP"}</span>
+            </button>
+
+            {/* Tombol Hapus Massal */}
+            <button
+              type="button"
+              disabled={isZipping || deleteMutation.isPending}
               onClick={openBulkDeleteModal}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-xs font-bold transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-xs font-bold transition-colors cursor-pointer disabled:opacity-50"
             >
               <Trash2 className="w-3.5 h-3.5" />
               <span>Hapus Terpilih ({selectedIds.length})</span>

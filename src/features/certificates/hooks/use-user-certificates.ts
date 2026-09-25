@@ -59,6 +59,7 @@ export function useUserCertificatesListQuery(params: UserCertQueryParams) {
   return useQuery<UserCertsApiResponse>({
     queryKey: ["user-certificates", params],
     queryFn: async () => {
+      // Tambahkan timestamp query parameter agar browser dan proxy tidak pernah menyimpan cache GET
       const res = await apiClient.get<UserCertsApiResponse>("/certificates", {
         params: {
           page: params.page || 1,
@@ -66,11 +67,13 @@ export function useUserCertificatesListQuery(params: UserCertQueryParams) {
           search: params.search || undefined,
           status: params.status || undefined,
           event_id: params.event_id || undefined,
+          _t: Date.now(), // Cache buster
         },
       });
       return res.data;
     },
-    staleTime: 1000 * 60 * 2,
+    staleTime: 0, // 👈 UBAH INI: Langsung anggap stale agar refetch instan terjadi saat invalidasi
+    refetchOnMount: "always",
   });
 }
 
@@ -100,8 +103,18 @@ export function useRevokeUserCertMutation() {
       return res.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["user-certificates"] });
-      queryClient.invalidateQueries({ queryKey: ["user-dashboard-stats"] });
+      queryClient.invalidateQueries({
+        queryKey: ["user-certificates"],
+        exact: false,
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["user-dashboard"],
+        exact: false,
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["user-dashboard-stats"],
+        exact: false,
+      });
     },
   });
 }
@@ -128,8 +141,18 @@ export function useRegenerateCertMutation() {
       return res.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["user-certificates"] });
-      queryClient.invalidateQueries({ queryKey: ["user-dashboard-stats"] });
+      queryClient.invalidateQueries({
+        queryKey: ["user-certificates"],
+        exact: false,
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["user-dashboard"],
+        exact: false,
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["user-dashboard-stats"],
+        exact: false,
+      });
     },
   });
 }

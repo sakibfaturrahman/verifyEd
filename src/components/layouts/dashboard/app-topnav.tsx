@@ -111,7 +111,10 @@ export function AppTopNav({ onOpenSidebar, roleOverride }: AppTopNavProps) {
   const userEmail = user?.email || "akun@verifyed.id";
   const roleLabel = isAdmin ? "Super Admin" : "Organisasi";
 
-  const hasAuth = Boolean(mounted && user && (user.id || token));
+  // Notifikasi hanya diaktifkan jika user terautentikasi DAN memiliki role admin
+  const shouldFetchNotif = Boolean(
+    mounted && isAdmin && user && (user.id || token),
+  );
 
   const { data: notifData, isPending: isNotifLoading } =
     useQuery<NotificationsApiResponse>({
@@ -133,7 +136,7 @@ export function AppTopNav({ onOpenSidebar, roleOverride }: AppTopNavProps) {
           unreadCount: Number(raw?.unreadCount ?? raw?.unread ?? 0),
         };
       },
-      enabled: hasAuth,
+      enabled: shouldFetchNotif,
       refetchInterval: 30000,
       staleTime: 1000 * 15,
       retry: (failureCount, error: unknown) => {
@@ -313,94 +316,96 @@ export function AppTopNav({ onOpenSidebar, roleOverride }: AppTopNavProps) {
           )}
         </button>
 
-        {/* Dropdown Notifikasi */}
-        <div className="relative" ref={notifRef}>
-          <button
-            type="button"
-            onClick={() => setNotifOpen(!notifOpen)}
-            className="relative p-2 transition-colors border rounded-xl border-slate-200 dark:border-zinc-800 text-slate-600 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-900 cursor-pointer"
-            aria-label="Notifikasi"
-          >
-            <Bell className="w-4 h-4" />
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-rose-600 text-[9px] font-bold text-white shadow-xs">
-                {unreadCount > 9 ? "9+" : unreadCount}
-              </span>
-            )}
-          </button>
+        {/* Dropdown Notifikasi - Khusus Tampil untuk Admin */}
+        {isAdmin && (
+          <div className="relative" ref={notifRef}>
+            <button
+              type="button"
+              onClick={() => setNotifOpen(!notifOpen)}
+              className="relative p-2 transition-colors border rounded-xl border-slate-200 dark:border-zinc-800 text-slate-600 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-900 cursor-pointer"
+              aria-label="Notifikasi"
+            >
+              <Bell className="w-4 h-4" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-rose-600 text-[9px] font-bold text-white shadow-xs">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
+            </button>
 
-          {notifOpen && (
-            <div className="absolute right-0 z-50 p-3 mt-2 space-y-2 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 shadow-xl w-80 sm:w-96 rounded-2xl animate-in fade-in slide-in-from-top-2 duration-150">
-              <div className="flex items-center justify-between px-2 py-1 border-b border-slate-100 dark:border-zinc-800">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-bold text-[#0e1738] dark:text-zinc-100">
-                    Pemberitahuan
-                  </span>
-                  {unreadCount > 0 && (
-                    <span className="px-1.5 py-0.5 text-[9px] font-extrabold rounded-md bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-800/40">
-                      {unreadCount} baru
+            {notifOpen && (
+              <div className="absolute right-0 z-50 p-3 mt-2 space-y-2 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 shadow-xl w-80 sm:w-96 rounded-2xl animate-in fade-in slide-in-from-top-2 duration-150">
+                <div className="flex items-center justify-between px-2 py-1 border-b border-slate-100 dark:border-zinc-800">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-[#0e1738] dark:text-zinc-100">
+                      Pemberitahuan
                     </span>
+                    {unreadCount > 0 && (
+                      <span className="px-1.5 py-0.5 text-[9px] font-extrabold rounded-md bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-800/40">
+                        {unreadCount} baru
+                      </span>
+                    )}
+                  </div>
+
+                  {unreadCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => markAllAsReadMutation.mutate()}
+                      disabled={markAllAsReadMutation.isPending}
+                      className="inline-flex items-center gap-1 text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer disabled:opacity-50"
+                    >
+                      <CheckCheck className="w-3 h-3" />
+                      <span>Tandai Semua Dibaca</span>
+                    </button>
                   )}
                 </div>
 
-                {unreadCount > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => markAllAsReadMutation.mutate()}
-                    disabled={markAllAsReadMutation.isPending}
-                    className="inline-flex items-center gap-1 text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer disabled:opacity-50"
-                  >
-                    <CheckCheck className="w-3 h-3" />
-                    <span>Tandai Semua Dibaca</span>
-                  </button>
-                )}
-              </div>
-
-              <div className="space-y-1.5 max-h-80 overflow-y-auto no-scrollbar">
-                {!hasAuth ? (
-                  <div className="py-8 text-center text-slate-400 text-xs">
-                    Silakan masuk untuk melihat pemberitahuan.
-                  </div>
-                ) : isNotifLoading ? (
-                  <div className="py-8 flex flex-col items-center justify-center gap-2 text-slate-400">
-                    <Loader2 className="w-4 h-4 animate-spin text-[#122253] dark:text-zinc-400" />
-                    <span className="text-[11px]">Memuat pemberitahuan...</span>
-                  </div>
-                ) : notifications.length === 0 ? (
-                  <div className="py-8 text-center text-slate-400 text-xs">
-                    Tidak ada notifikasi saat ini.
-                  </div>
-                ) : (
-                  notifications.map((n) => (
-                    <div
-                      key={n.id}
-                      onClick={() => {
-                        if (!n.is_read) markAsReadMutation.mutate(n.id);
-                      }}
-                      className={`p-2.5 rounded-xl text-xs space-y-1 transition-colors cursor-pointer border ${
-                        !n.is_read
-                          ? "bg-slate-50/80 dark:bg-zinc-800/60 border-slate-200/80 dark:border-zinc-700/80"
-                          : "bg-transparent border-transparent hover:bg-slate-50 dark:hover:bg-zinc-800/40 opacity-70"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between font-bold text-[#0e1738] dark:text-zinc-100 text-[11px]">
-                        <span className="flex items-center gap-1.5 truncate pr-2">
-                          {renderNotifIcon(n.type, n.severity)}
-                          <span className="truncate">{n.title}</span>
-                        </span>
-                        <span className="text-[9px] font-normal text-slate-400 shrink-0">
-                          {formatRelativeTime(n.created_at)}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-slate-600 dark:text-zinc-400 line-clamp-2 leading-relaxed">
-                        {n.message}
-                      </p>
+                <div className="space-y-1.5 max-h-80 overflow-y-auto no-scrollbar">
+                  {!mounted || !user ? (
+                    <div className="py-8 text-center text-slate-400 text-xs">
+                      Silakan masuk untuk melihat pemberitahuan.
                     </div>
-                  ))
-                )}
-              </div>
+                  ) : isNotifLoading ? (
+                    <div className="py-8 flex flex-col items-center justify-center gap-2 text-slate-400">
+                      <Loader2 className="w-4 h-4 animate-spin text-[#122253] dark:text-zinc-400" />
+                      <span className="text-[11px]">
+                        Memuat pemberitahuan...
+                      </span>
+                    </div>
+                  ) : notifications.length === 0 ? (
+                    <div className="py-8 text-center text-slate-400 text-xs">
+                      Tidak ada notifikasi saat ini.
+                    </div>
+                  ) : (
+                    notifications.map((n) => (
+                      <div
+                        key={n.id}
+                        onClick={() => {
+                          if (!n.is_read) markAsReadMutation.mutate(n.id);
+                        }}
+                        className={`p-2.5 rounded-xl text-xs space-y-1 transition-colors cursor-pointer border ${
+                          !n.is_read
+                            ? "bg-slate-50/80 dark:bg-zinc-800/60 border-slate-200/80 dark:border-zinc-700/80"
+                            : "bg-transparent border-transparent hover:bg-slate-50 dark:hover:bg-zinc-800/40 opacity-70"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between font-bold text-[#0e1738] dark:text-zinc-100 text-[11px]">
+                          <span className="flex items-center gap-1.5 truncate pr-2">
+                            {renderNotifIcon(n.type, n.severity)}
+                            <span className="truncate">{n.title}</span>
+                          </span>
+                          <span className="text-[9px] font-normal text-slate-400 shrink-0">
+                            {formatRelativeTime(n.created_at)}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-600 dark:text-zinc-400 line-clamp-2 leading-relaxed">
+                          {n.message}
+                        </p>
+                      </div>
+                    ))
+                  )}
+                </div>
 
-              {isAdmin && (
                 <div className="pt-2 border-t border-slate-100 dark:border-zinc-800">
                   <Link
                     href="/admin/notifications"
@@ -411,10 +416,10 @@ export function AppTopNav({ onOpenSidebar, roleOverride }: AppTopNavProps) {
                     <ArrowRight className="w-3.5 h-3.5" />
                   </Link>
                 </div>
-              )}
-            </div>
-          )}
-        </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Menu Aksi Cepat */}
         {isAdmin ? (
