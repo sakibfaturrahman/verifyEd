@@ -13,7 +13,6 @@ import {
   ExternalLink,
   ChevronDown,
   User as UserIcon,
-  Settings,
   LogOut,
   Clock,
   Sun,
@@ -60,7 +59,7 @@ interface NotificationItemData {
 }
 
 interface NotificationsApiResponse {
-  data: NotificationItemData[];
+  notifications: NotificationItemData[];
   total: number;
   unreadCount: number;
 }
@@ -100,7 +99,6 @@ export function AppTopNav({ onOpenSidebar, roleOverride }: AppTopNavProps) {
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
 
-  // Tandai komponen telah terhidrasi di sisi client
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -113,35 +111,42 @@ export function AppTopNav({ onOpenSidebar, roleOverride }: AppTopNavProps) {
   const userEmail = user?.email || "akun@verifyed.id";
   const roleLabel = isAdmin ? "Super Admin" : "Organisasi";
 
-  // Ambil notifikasi hanya ketika komponen sudah mounted dan user terotentikasi
   const hasAuth = Boolean(mounted && user && (user.id || token));
 
   const { data: notifData, isPending: isNotifLoading } =
     useQuery<NotificationsApiResponse>({
       queryKey: ["app-notifications"],
       queryFn: async () => {
-        const res = await apiClient.get<{
-          success: boolean;
-          data: NotificationsApiResponse;
-        }>("/notifications", {
+        const res = await apiClient.get("/notifications", {
           params: { page: 1, limit: 10 },
         });
-        return res.data.data;
+        const raw = res.data?.data;
+        return {
+          notifications: Array.isArray(raw?.notifications)
+            ? raw.notifications
+            : Array.isArray(raw?.data)
+              ? raw.data
+              : Array.isArray(raw)
+                ? raw
+                : [],
+          total: Number(raw?.total ?? 0),
+          unreadCount: Number(raw?.unreadCount ?? raw?.unread ?? 0),
+        };
       },
       enabled: hasAuth,
-      refetchInterval: 20000,
-      staleTime: 1000 * 10,
+      refetchInterval: 30000,
+      staleTime: 1000 * 15,
       retry: (failureCount, error: unknown) => {
-        const status = (error as { response?: { status?: number } })?.response?.status;
+        const status = (error as { response?: { status?: number } })?.response
+          ?.status;
         if (status === 401 || status === 403) return false;
         return failureCount < 2;
       },
     });
 
-  const notifications = notifData?.data || [];
+  const notifications = notifData?.notifications || [];
   const unreadCount = notifData?.unreadCount || 0;
 
-  // Mutasi untuk menandai 1 notifikasi telah dibaca
   const markAsReadMutation = useMutation({
     mutationFn: async (id: string) => {
       await apiClient.patch(`/notifications/${id}/read`);
@@ -152,7 +157,6 @@ export function AppTopNav({ onOpenSidebar, roleOverride }: AppTopNavProps) {
     },
   });
 
-  // Mutasi untuk menandai seluruh notifikasi telah dibaca
   const markAllAsReadMutation = useMutation({
     mutationFn: async () => {
       await apiClient.patch("/notifications/read-all");
@@ -163,7 +167,6 @@ export function AppTopNav({ onOpenSidebar, roleOverride }: AppTopNavProps) {
     },
   });
 
-  // Inisialisasi tema tampilan
   useEffect(() => {
     const isDarkMode =
       localStorage.getItem("theme") === "dark" ||
@@ -190,7 +193,6 @@ export function AppTopNav({ onOpenSidebar, roleOverride }: AppTopNavProps) {
     }
   };
 
-  // Penutup dropdown ketika klik di luar elemen
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as Node;
@@ -398,7 +400,6 @@ export function AppTopNav({ onOpenSidebar, roleOverride }: AppTopNavProps) {
                 )}
               </div>
 
-              {/* Tautan Navigasi ke Daftar Penuh */}
               {isAdmin && (
                 <div className="pt-2 border-t border-slate-100 dark:border-zinc-800">
                   <Link
@@ -435,25 +436,28 @@ export function AppTopNav({ onOpenSidebar, roleOverride }: AppTopNavProps) {
             {createOpen && (
               <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 shadow-xl p-1.5 space-y-0.5 z-50">
                 <Link
-                  href="/admin/certificates/new"
+                  href="/admin/certificates"
+                  onClick={() => setCreateOpen(false)}
                   className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800"
                 >
                   <Award className="w-3.5 h-3.5 text-indigo-600" />
-                  <span>Terbitkan Sertifikat</span>
+                  <span>Daftar Sertifikat</span>
                 </Link>
                 <Link
-                  href="/admin/events/new"
+                  href="/admin/events"
+                  onClick={() => setCreateOpen(false)}
                   className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800"
                 >
                   <CalendarPlus className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Tambah Agenda Acara</span>
+                  <span>Kelola Agenda Acara</span>
                 </Link>
                 <Link
-                  href="/admin/certificates/revoke"
+                  href="/admin/users"
+                  onClick={() => setCreateOpen(false)}
                   className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800"
                 >
                   <ShieldAlert className="w-3.5 h-3.5 text-rose-500" />
-                  <span>Cabut Status Sertifikat</span>
+                  <span>Manajemen Organisasi</span>
                 </Link>
               </div>
             )}
@@ -470,7 +474,7 @@ export function AppTopNav({ onOpenSidebar, roleOverride }: AppTopNavProps) {
 
         <div className="h-6 w-px bg-slate-200 dark:bg-zinc-800 mx-0.5 hidden sm:block" />
 
-        {/* Dropdown Profil Pengguna */}
+        {/* Profil Dropdown */}
         <div className="relative" ref={profileRef}>
           <button
             type="button"
@@ -503,20 +507,13 @@ export function AppTopNav({ onOpenSidebar, roleOverride }: AppTopNavProps) {
               </div>
 
               <Link
-                href={isAdmin ? "/admin/profile" : "/user/profile"}
+                href={isAdmin ? "/admin/users" : "/user/profile"}
+                onClick={() => setProfileOpen(false)}
                 className="flex items-center gap-2 px-3 py-2 text-xs font-medium transition-colors rounded-xl text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800"
               >
                 <UserIcon className="w-3.5 h-3.5 text-slate-400" />
                 <span>Pengaturan Profil</span>
               </Link>
-
-              {/* <Link
-                href={isAdmin ? "/admin/settings" : "/user/settings"}
-                className="flex items-center gap-2 px-3 py-2 text-xs font-medium transition-colors rounded-xl text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800"
-              >
-                <Settings className="w-3.5 h-3.5 text-slate-400" />
-                <span>Pengaturan Akun</span>
-              </Link> */}
 
               <div className="pt-1 border-t border-slate-100 dark:border-zinc-800">
                 <button

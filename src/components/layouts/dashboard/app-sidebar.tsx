@@ -53,13 +53,13 @@ export function AppSidebar({
   const { data: notifData } = useQuery<{ unreadCount: number }>({
     queryKey: ["app-notifications"],
     queryFn: async () => {
-      const res = await apiClient.get<{
-        success: boolean;
-        data: { unreadCount: number };
-      }>("/notifications", {
+      const res = await apiClient.get("/notifications", {
         params: { page: 1, limit: 1 },
       });
-      return res.data.data;
+      const raw = res.data?.data;
+      return {
+        unreadCount: Number(raw?.unreadCount ?? raw?.unread ?? 0),
+      };
     },
     enabled: Boolean(user && user.id),
     refetchInterval: 30000,
@@ -69,13 +69,12 @@ export function AppSidebar({
   const notifBadge =
     unreadCount > 0 ? (unreadCount > 99 ? "99+" : unreadCount) : null;
 
-  // Deteksi role berdasarkan prop atau dari auth store
+  // Deteksi role
   const currentRole =
     roleOverride || (user?.role === "admin" ? "admin" : "user");
   const isAdmin = currentRole === "admin";
   const homeHref = isAdmin ? "/admin" : "/user";
 
-  // 1. Menu Konfigurasi Role Admin
   const adminMenuGroups: NavMenuGroup[] = [
     {
       title: "Ikhtisar",
@@ -137,7 +136,6 @@ export function AppSidebar({
     },
   ];
 
-  // 2. Menu Konfigurasi Role User / Organisasi
   const userMenuGroups: NavMenuGroup[] = [
     {
       title: "Ikhtisar",
@@ -301,7 +299,6 @@ export function AppSidebar({
                             : "text-slate-400 dark:text-zinc-500 group-hover:text-slate-800 dark:group-hover:text-zinc-200"
                         }`}
                       />
-                      {/* Titik indikator kecil saat sidebar dicutkan */}
                       {isCollapsed && Boolean(item.badge) && (
                         <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-rose-600 ring-2 ring-white dark:ring-zinc-950" />
                       )}
@@ -340,6 +337,42 @@ export function AppSidebar({
             </nav>
           </div>
         ))}
+      </div>
+
+      {/* 3. Footer Card */}
+      <div className="p-3 2xl:p-4 border-t border-slate-100 dark:border-zinc-800/80 bg-slate-50/60 dark:bg-zinc-900/40">
+        {!isCollapsed ? (
+          isAdmin ? (
+            <div className="p-2.5 2xl:p-3.5 rounded-xl 2xl:rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex items-center justify-between">
+              <div className="flex items-center gap-2.5 2xl:gap-3">
+                <span className="w-2 h-2 2xl:w-2.5 2xl:h-2.5 rounded-full bg-emerald-600 shrink-0" />
+                <div>
+                  <p className="text-[11px] 2xl:text-xs font-bold text-[#0e1738] dark:text-zinc-200 leading-tight">
+                    Node Primer
+                  </p>
+                  <p className="text-[10px] 2xl:text-[11px] text-slate-500">
+                    SHA-256 Siaga
+                  </p>
+                </div>
+              </div>
+              <Activity className="w-3.5 h-3.5 2xl:w-4 2xl:h-4 text-slate-400" />
+            </div>
+          ) : (
+            <div className="p-3 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+              <div className="flex items-center justify-between text-[11px] font-bold text-[#0e1738] dark:text-zinc-200">
+                <span>Status Ledger</span>
+                <span className="text-emerald-600">Aktif</span>
+              </div>
+              <p className="text-[10px] text-slate-400 mt-1">
+                Koneksi repositori terenkripsi & siap menerbitkan dokumen.
+              </p>
+            </div>
+          )
+        ) : (
+          <div className="flex justify-center py-1 2xl:py-2">
+            <span className="w-2 h-2 2xl:w-2.5 2xl:h-2.5 rounded-full bg-emerald-600" />
+          </div>
+        )}
       </div>
     </aside>
   );

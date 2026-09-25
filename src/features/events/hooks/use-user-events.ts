@@ -41,8 +41,8 @@ export interface CreateEventPayload {
   name: string;
   organizer: string;
   event_date: string;
-  location?: string;
-  description?: string;
+  location?: string | null;
+  description?: string | null;
   status?: "draft" | "ongoing" | "completed";
 }
 
@@ -50,8 +50,8 @@ export interface UpdateEventPayload {
   name?: string;
   organizer?: string;
   event_date?: string;
-  location?: string;
-  description?: string;
+  location?: string | null;
+  description?: string | null;
   status?: "draft" | "ongoing" | "completed";
 }
 
@@ -64,7 +64,7 @@ export function useUserEventsListQuery(params: UserEventQueryParams) {
         params: {
           page: params.page || 1,
           limit: params.limit || 10,
-          search: params.search || undefined,
+          search: params.search?.trim() || undefined,
           status: params.status || undefined,
         },
       });
@@ -84,13 +84,20 @@ export function useCreateUserEventMutation() {
     CreateEventPayload
   >({
     mutationFn: async (payload) => {
-      const res = await apiClient.post("/events", payload);
+      // Sanitasi payload string kosong menjadi null
+      const sanitized = {
+        ...payload,
+        location: payload.location?.trim() || null,
+        description: payload.description?.trim() || null,
+        status: payload.status || "ongoing",
+      };
+      const res = await apiClient.post("/events", sanitized);
       return res.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user-events"] });
-      queryClient.invalidateQueries({ queryKey: ["user-dashboard-stats"] });
-      queryClient.invalidateQueries({ queryKey: ["user-recent-events"] });
+      queryClient.invalidateQueries({ queryKey: ["user-dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-dashboard-stats"] });
     },
   });
 }
@@ -105,13 +112,24 @@ export function useUpdateUserEventMutation() {
     { id: string; payload: UpdateEventPayload }
   >({
     mutationFn: async ({ id, payload }) => {
-      const res = await apiClient.put(`/events/${id}`, payload);
+      const sanitized = {
+        ...payload,
+        location:
+          payload.location !== undefined
+            ? payload.location?.trim() || null
+            : undefined,
+        description:
+          payload.description !== undefined
+            ? payload.description?.trim() || null
+            : undefined,
+      };
+      const res = await apiClient.put(`/events/${id}`, sanitized);
       return res.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user-events"] });
-      queryClient.invalidateQueries({ queryKey: ["user-dashboard-stats"] });
-      queryClient.invalidateQueries({ queryKey: ["user-recent-events"] });
+      queryClient.invalidateQueries({ queryKey: ["user-dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-dashboard-stats"] });
     },
   });
 }
@@ -131,8 +149,8 @@ export function useDeleteUserEventMutation() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user-events"] });
-      queryClient.invalidateQueries({ queryKey: ["user-dashboard-stats"] });
-      queryClient.invalidateQueries({ queryKey: ["user-recent-events"] });
+      queryClient.invalidateQueries({ queryKey: ["user-dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-dashboard-stats"] });
     },
   });
 }

@@ -1,12 +1,13 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 import { useAuthStore } from "@/stores/auth-store";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "https://api-verifyed.vercel.app/api/v1";
+// Di localhost, gunakan proxy internal Next.js agar browser tidak terkena CORS
+const isDevelopment = process.env.NODE_ENV === "development";
+
+const API_BASE_URL = "/api/backend";
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  withCredentials: true,
 });
 
 /**
