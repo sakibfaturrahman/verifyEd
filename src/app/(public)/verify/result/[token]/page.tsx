@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 import { ArrowLeft, AlertTriangle, ShieldCheck } from "lucide-react";
@@ -21,65 +21,100 @@ import { NotFoundCard } from "@/features/verification/components/result/not-foun
 
 export default function DynamicVerificationResultPage() {
   const params = useParams();
-  const router = useRouter();
-  const rawToken = params?.token
+  const searchParams = useSearchParams();
+
+  // Ekstraksi token dari route param (/verify/[token]) atau query string fallback (?token=... / ?qr_token=...)
+  const rawParamToken = params?.token
     ? decodeURIComponent(params.token as string)
     : "";
+  const queryToken =
+    searchParams.get("token") || searchParams.get("qr_token") || "";
+  const activeToken = (rawParamToken || queryToken).trim();
 
   const {
     result: storeResult,
-    scannedMethod,
+    scannedMethod: storeMethod,
     setVerificationResult,
   } = useVerificationStore();
 
   const [copied, setCopied] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [currentResult, setCurrentResult] = useState<VerificationResult | null>(
+    null,
+  );
+  const [isLoadingDirect, setIsLoadingDirect] = useState(true);
+  const [detectionMethod, setDetectionMethod] = useState<"qr" | "id" | "pdf">(
+    storeMethod || "qr",
+  );
 
   const verifyByQr = useVerifyByQrTokenMutation();
   const verifyByNumber = useVerifyByNumberMutation();
-
-  const [currentResult, setCurrentResult] = useState<VerificationResult | null>(
-    () => storeResult,
-  );
-  const [isLoadingDirect, setIsLoadingDirect] = useState(false);
-  const hasFetched = useRef(false);
+  const hasTriggeredFetch = useRef(false);
 
   useEffect(() => {
     setMounted(true);
 
-    if (hasFetched.current) return;
-
-    if (!storeResult && rawToken) {
-      hasFetched.current = true;
-      setIsLoadingDirect(true);
-
-      if (rawToken.toUpperCase().startsWith("CERT-")) {
-        verifyByNumber.mutate(rawToken, {
-          onSuccess: (data) => {
-            setCurrentResult(data);
-            setVerificationResult(data, "id");
-            setIsLoadingDirect(false);
-          },
-          onError: () => {
-            setCurrentResult({ status: "not_found" });
-            setIsLoadingDirect(false);
-          },
-        });
-      } else {
-        verifyByQr.mutate(rawToken, {
-          onSuccess: (data) => {
-            setCurrentResult(data);
-            setVerificationResult(data, "qr");
-            setIsLoadingDirect(false);
-          },
-          onError: () => {
-            setCurrentResult({ status: "not_found" });
-            setIsLoadingDirect(false);
-          },
-        });
+    // Jika tidak ada token di URL, gunakan data hasil verifikasi yang tersimpan di store
+    if (!activeToken) {
+      if (storeResult) {
+        setCurrentResult(storeResult);
+        setDetectionMethod(storeMethod || "qr");
       }
+      setIsLoadingDirect(false);
+      return;
     }
-  }, [rawToken, storeResult]);
+
+    // Jika token URL sama dengan data sertifikat yang sudah ada di store, langsung gunakan
+    const certData = storeResult?.certificate as any;
+    const isMatchingStore =
+      certData &&
+      (certData.qrToken === activeToken ||
+        certData.qr_token === activeToken ||
+        certData.certificateNumber === activeToken ||
+        certData.certificate_number === activeToken);
+
+    if (isMatchingStore) {
+      setCurrentResult(storeResult);
+      setDetectionMethod(storeMethod || "qr");
+      setIsLoadingDirect(false);
+      return;
+    }
+
+    // Hindari duplikasi pemanggilan request (React Strict Mode guard)
+    if (hasTriggeredFetch.current) return;
+    hasTriggeredFetch.current = true;
+    setIsLoadingDirect(true);
+
+    const isCertificateNumber = activeToken.toUpperCase().startsWith("CERT-");
+
+    if (isCertificateNumber) {
+      setDetectionMethod("id");
+      verifyByNumber.mutate(activeToken, {
+        onSuccess: (data) => {
+          setCurrentResult(data);
+          setVerificationResult(data, "id");
+          setIsLoadingDirect(false);
+        },
+        onError: () => {
+          setCurrentResult({ status: "not_found" });
+          setIsLoadingDirect(false);
+        },
+      });
+    } else {
+      setDetectionMethod("qr");
+      verifyByQr.mutate(activeToken, {
+        onSuccess: (data) => {
+          setCurrentResult(data);
+          setVerificationResult(data, "qr");
+          setIsLoadingDirect(false);
+        },
+        onError: () => {
+          setCurrentResult({ status: "not_found" });
+          setIsLoadingDirect(false);
+        },
+      });
+    }
+  }, [activeToken, storeResult, storeMethod, setVerificationResult]);
 
   if (!mounted || isLoadingDirect) {
     return (
@@ -92,7 +127,7 @@ export default function DynamicVerificationResultPage() {
             Memeriksa Keaslian Dokumen...
           </h3>
           <p className="text-xs text-slate-500">
-            Sedang mencocokkan data sertifikat ke sistem
+            Sedang memvalidasi tanda tangan kriptografi sertifikat
           </p>
         </div>
       </div>
@@ -111,8 +146,8 @@ export default function DynamicVerificationResultPage() {
             Dokumen Belum Diperiksa
           </h2>
           <p className="text-xs sm:text-sm text-slate-500 max-w-sm mt-1.5 leading-relaxed">
-            Tidak ada data pemeriksaan aktif. Silakan masukkan nomor sertifikat
-            atau unggah berkas di beranda.
+            Tidak ada parameter identifikasi sertifikat yang valid. Silakan scan
+            ulang kode QR atau periksa nomor dokumen Anda di beranda.
           </p>
           <Link
             href="/"
@@ -127,7 +162,6 @@ export default function DynamicVerificationResultPage() {
     );
   }
 
-  const isVerified = currentResult.status === "verified";
   const isRevoked = currentResult.status === "revoked";
   const isNotFound = currentResult.status === "not_found";
   const cert = currentResult.certificate;
@@ -146,7 +180,7 @@ export default function DynamicVerificationResultPage() {
       navigator
         .share({
           title: `Bukti Keaslian Sertifikat: ${cert.recipientName}`,
-          text: `Sertifikat resmi atas nama ${cert.recipientName} terbukti asli di VerifyEd.`,
+          text: `Sertifikat resmi atas nama ${cert.recipientName} terbukti valid di VerifyEd.`,
           url: window.location.href,
         })
         .catch(() => {});
@@ -167,7 +201,7 @@ export default function DynamicVerificationResultPage() {
 
         <ResultStatusCard
           status={currentResult.status}
-          scannedMethod={scannedMethod}
+          scannedMethod={detectionMethod}
         />
 
         {cert && !isNotFound ? (
