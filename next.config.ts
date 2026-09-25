@@ -1,11 +1,14 @@
-const nextConfig = {
-  images: {
-    remotePatterns: [
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  async rewrites() {
+    return [
       {
-        protocol: "https",
-        hostname: "images.unsplash.com",
+        source: "/api/proxy/:path*",
+        destination: "https://api-verifyed.vercel.app/api/v1/:path*",
       },
-    ],
+    ];
   },
 };
+
 export default nextConfig;

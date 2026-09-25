@@ -6,6 +6,7 @@ const API_BASE_URL =
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
+  withCredentials: true,
 });
 
 /**
@@ -13,7 +14,7 @@ export const apiClient = axios.create({
  * key localStorage (auth-storage, auth, token, dsb.) secara otomatis.
  */
 function getActiveAccessToken(): string | null {
-  // 1. Cek dari Zustand in-memory state dengan double casting (as unknown as Record<string, unknown>)
+  // 1. Cek dari Zustand in-memory state
   try {
     const state = useAuthStore.getState() as unknown as Record<string, unknown>;
     if (state) {
@@ -173,9 +174,11 @@ apiClient.interceptors.response.use(
 
       if (refreshToken) {
         try {
-          const res = await axios.post(`${API_BASE_URL}/auth/refresh`, {
-            refreshToken,
-          });
+          const res = await axios.post(
+            `${API_BASE_URL}/auth/refresh`,
+            { refreshToken },
+            { withCredentials: true },
+          );
 
           const {
             accessToken,
