@@ -106,7 +106,7 @@ export function UserEventFormModal({
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Contoh: Seminar Nasional AI & Cloud Computing 2026"
+              placeholder="Contoh: Seminar"
               className="w-full bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-700 rounded-xl px-3.5 py-2.5 font-medium text-slate-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-[#0e1738]/15"
             />
           </div>
