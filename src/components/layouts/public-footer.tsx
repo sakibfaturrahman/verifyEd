@@ -46,7 +46,7 @@ export function PublicFooter() {
                 Mulai Uji Coba Gratis
               </Link>
               <Link
-                href="/verify"
+                href="/"
                 className="px-8 py-3.5 rounded-full bg-transparent border border-white/60 text-white text-sm font-bold hover:bg-white/10 transition-all active:scale-95"
               >
                 Coba Verifikasi
