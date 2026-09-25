@@ -22,10 +22,13 @@ interface UpdateProfilePayload {
 }
 
 interface ChangePasswordPayload {
-  current_password: string;
-  new_password: string;
+  currentPassword?: string;
+  newPassword?: string;
+  current_password?: string;
+  new_password?: string;
 }
 
+// 1. Ambil data profil (tetap gunakan /auth/me yang stabil)
 export function useProfileQuery() {
   return useQuery<UserProfileData, AxiosError<{ message: string }>>({
     queryKey: ["user-profile"],
@@ -39,6 +42,7 @@ export function useProfileQuery() {
   });
 }
 
+// 2. Update profil (mengarah ke /users/profile)
 export function useUpdateProfileMutation() {
   const queryClient = useQueryClient();
 
@@ -48,7 +52,7 @@ export function useUpdateProfileMutation() {
     UpdateProfilePayload
   >({
     mutationFn: async (payload) => {
-      const res = await apiClient.patch<{
+      const res = await apiClient.put<{
         success: boolean;
         data: UserProfileData;
       }>("/users/profile", payload);
@@ -61,6 +65,7 @@ export function useUpdateProfileMutation() {
   });
 }
 
+// 3. Change password (arahkan ke /users/change-password)
 export function useChangePasswordMutation() {
   return useMutation<
     void,
@@ -68,7 +73,10 @@ export function useChangePasswordMutation() {
     ChangePasswordPayload
   >({
     mutationFn: async (payload) => {
-      await apiClient.post("/auth/change-password", payload);
+      await apiClient.post("/users/change-password", {
+        currentPassword: payload.currentPassword || payload.current_password,
+        newPassword: payload.newPassword || payload.new_password,
+      });
     },
   });
 }

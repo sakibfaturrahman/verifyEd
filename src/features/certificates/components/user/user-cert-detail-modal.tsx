@@ -16,7 +16,7 @@ import { UserCertificateItem } from "../../hooks/use-user-certificates";
 interface UserCertDetailModalProps {
   cert: UserCertificateItem | null;
   onClose: () => void;
-  onDownload: (certId: string, num: string) => void;
+   onDownload: (certId: string, certNumber: string, recipientName?: string) => void;
   onRegenerateFile: (certId: string, file: File) => void;
   isRegenerating?: boolean;
 }
@@ -149,14 +149,20 @@ export function UserCertDetailModal({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => onDownload(cert.id, cert.certificate_number)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-zinc-700 text-xs font-semibold text-slate-700 dark:text-zinc-200 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+              onClick={() =>
+                onDownload(
+                  cert.id,
+                  cert.certificate_number,
+                  cert.recipient_name,
+                )
+              } // <-- Sertakan cert.recipient_name
+              className="..."
             >
               <Download className="w-3.5 h-3.5" />
               <span>Unduh PDF</span>
             </button>
             <Link
-              href={`/verify/result/${(cert.certificate_number)}`}
+              href={`/verify/result/${cert.certificate_number}`}
               target="_blank"
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#0e1738] dark:bg-zinc-100 text-white dark:text-[#0e1738] text-xs font-semibold hover:bg-[#1a254d] transition-colors"
             >

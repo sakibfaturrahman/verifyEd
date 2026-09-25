@@ -92,9 +92,6 @@ export function LoginForm({ onSwitchToRegister }: LoginFormProps) {
         <div className="space-y-1">
           <div className="flex items-center justify-between">
             <label className="font-bold text-[#122253]">Kata Sandi</label>
-            <span className="text-[11px] font-semibold text-slate-400 hover:text-[#122253] cursor-pointer">
-              Lupa sandi?
-            </span>
           </div>
           <div className="relative">
             <input

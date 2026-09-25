@@ -130,7 +130,12 @@ export default function UserCertificatesPage() {
     );
   };
 
-  const handleDownloadSingle = async (certId: string, certNumber: string) => {
+  // 1. Handler Download Satuan (Nama file sesuai nama penerima asli)
+  const handleDownloadSingle = async (
+    certId: string,
+    certNumber: string,
+    recipientName?: string,
+  ) => {
     try {
       setDownloadingId(certId);
       toast.loading("Mempersiapkan berkas unduhan...", { id: `dl-${certId}` });
@@ -138,18 +143,38 @@ export default function UserCertificatesPage() {
       const url = await fetchUserCertDownloadUrl(certId);
       if (!url) throw new Error("URL berkas tidak ditemukan.");
 
-      const link = document.createElement("a");
-      link.href = url;
-      link.target = "_blank";
-      link.rel = "noopener noreferrer";
-      link.download = `${certNumber}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      // Gunakan proxy lokal agar penamaan file di browser 100% dipatuhi
+      const proxyUrl = `/api/proxy-download?url=${encodeURIComponent(url)}`;
+      const res = await fetch(proxyUrl);
+
+      // Cari data nama penerima jika argumen recipientName kosong
+      const targetCert = certs.find((c) => c.id === certId);
+      const actualRecipientName =
+        recipientName || targetCert?.recipient_name || "Peserta";
+
+      const cleanRecipient = actualRecipientName
+        .replace(/[\\/:*?"<>|]/g, "_")
+        .trim();
+      const fileName = `Sertifikat - ${cleanRecipient} - ${certNumber}.pdf`;
+
+      if (res.ok) {
+        const blob = await res.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = blobUrl;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(blobUrl);
+      } else {
+        // Fallback jika proxy gagal
+        window.open(url, "_blank");
+      }
 
       toast.success("Unduhan Berhasil", {
         id: `dl-${certId}`,
-        description: `Dokumen ${certNumber}.pdf berhasil diunduh.`,
+        description: `Dokumen "${fileName}" berhasil diunduh.`,
       });
     } catch (err: unknown) {
       const axiosErr = err as { response?: { data?: { message?: string } } };
@@ -164,7 +189,7 @@ export default function UserCertificatesPage() {
     }
   };
 
-  // Handler Unduh Massal dalam Format .ZIP
+  // 2. Handler Unduh Massal ZIP (Nama ZIP menyertakan nama event)
   const handleBulkDownload = async () => {
     if (selectedIds.length === 0) return;
 
@@ -175,9 +200,22 @@ export default function UserCertificatesPage() {
 
     try {
       const zip = new JSZip();
-      const folder = zip.folder("Sertifikat-VerifyEd");
 
+      // Ambil daftar sertifikat yang diceklis
       const selectedCerts = certs.filter((c) => selectedIds.includes(c.id));
+
+      // Deteksi nama event dari sertifikat terpilih
+      const firstEventName =
+        selectedCerts[0]?.events?.name ||
+        (selectedCerts[0] as any)?.event?.name ||
+        "Kegiatan";
+
+      const cleanEventName = firstEventName
+        .replace(/[\\/:*?"<>|]/g, "_")
+        .trim();
+      const folderName = `Sertifikat VerifyEd - ${cleanEventName}`;
+      const folder = zip.folder(folderName);
+
       let completedCount = 0;
 
       for (const cert of selectedCerts) {
@@ -185,25 +223,27 @@ export default function UserCertificatesPage() {
           const downloadUrl = await fetchUserCertDownloadUrl(cert.id);
           if (!downloadUrl) continue;
 
-          const res = await fetch(downloadUrl);
+          const proxyUrl = `/api/proxy-download?url=${encodeURIComponent(downloadUrl)}`;
+          const res = await fetch(proxyUrl);
           if (!res.ok) continue;
 
           const blob = await res.blob();
-          const cleanRecipient = cert.recipient_name.replace(
-            /[\\/:*?"<>|]/g,
-            "_",
-          );
-          const fileName = `${cert.certificate_number} - ${cleanRecipient}.pdf`;
+          const cleanRecipient = (cert.recipient_name || "Peserta")
+            .replace(/[\\/:*?"<>|]/g, "_")
+            .trim();
+
+          // Format nama file di dalam zip: Sertifikat - Nama Penerima - NoSertifikat.pdf
+          const fileName = `Sertifikat - ${cleanRecipient} - ${cert.certificate_number}.pdf`;
 
           folder?.file(fileName, blob);
+          completedCount++;
         } catch (fetchErr) {
           console.error(
-            `Gagal mengambil sertifikat ${cert.certificate_number}:`,
+            `Gagal mengemas sertifikat ${cert.certificate_number}:`,
             fetchErr,
           );
         }
 
-        completedCount++;
         const percent = Math.round(
           (completedCount / selectedCerts.length) * 100,
         );
@@ -213,6 +253,10 @@ export default function UserCertificatesPage() {
         });
       }
 
+      if (completedCount === 0) {
+        throw new Error("Tidak ada berkas yang berhasil diunduh.");
+      }
+
       toast.loading("Mengompresi arsip ZIP...", { id: toastId });
       const zipContent = await zip.generateAsync({
         type: "blob",
@@ -220,12 +264,12 @@ export default function UserCertificatesPage() {
         compressionOptions: { level: 6 },
       });
 
-      const dateStr = new Date().toISOString().split("T")[0];
-      saveAs(zipContent, `Sertifikat-VerifyEd-${dateStr}.zip`);
+      // Nama file arsip: "Sertifikat VerifyEd - [Nama Acara].zip"
+      saveAs(zipContent, `Sertifikat VerifyEd - ${cleanEventName}.zip`);
 
       toast.success("Unduhan ZIP Berhasil", {
         id: toastId,
-        description: `${completedCount} sertifikat berhasil dikompresi ke dalam berkas ZIP.`,
+        description: `${completedCount} sertifikat berhasil dikompresi ke dalam ZIP.`,
       });
 
       setSelectedIds([]);
@@ -233,7 +277,8 @@ export default function UserCertificatesPage() {
       console.error("ZIP Generation Error:", err);
       toast.error("Gagal Mengunduh ZIP", {
         id: toastId,
-        description: "Terjadi kesalahan saat mengompresi berkas dokumen.",
+        description:
+          err instanceof Error ? err.message : "Terjadi kendala kompresi.",
       });
     } finally {
       setIsZipping(false);
@@ -492,6 +537,7 @@ export default function UserCertificatesPage() {
                               handleDownloadSingle(
                                 cert.id,
                                 cert.certificate_number,
+                                cert.recipient_name,
                               )
                             }
                             className="p-1.5 rounded-lg text-slate-500 hover:text-[#0e1738] dark:hover:text-white hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer disabled:opacity-50"

@@ -259,7 +259,13 @@ export default function UserEventsPage() {
                       {getStatusBadge(evt.status)}
                     </td>
                     <td className="py-3.5 px-4 text-center font-bold text-slate-800 dark:text-zinc-200 font-mono">
-                      {evt.certificatesCount || 0} Dokumen
+                      {evt.certificatesCount ??
+                        (evt as any).certificates_count ??
+                        (evt as any).totalCertificates ??
+                        (evt as any).total_certificates ??
+                        (evt as any).certificates?.[0]?.count ??
+                        0}{" "}
+                      Dokumen
                     </td>
                     <td className="py-3.5 px-4 text-right">
                       <div className="flex items-center justify-end gap-1.5">

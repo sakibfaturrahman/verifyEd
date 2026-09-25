@@ -39,7 +39,7 @@ export function UserWelcomeHeader() {
 
         <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-slate-100 dark:border-zinc-800">
           <Link
-            href="/user/events/new"
+            href="/user/events"
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-zinc-700 text-xs font-semibold text-slate-700 dark:text-zinc-200 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors"
           >
             <Plus className="w-3.5 h-3.5 text-slate-500" />
